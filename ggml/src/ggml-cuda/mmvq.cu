@@ -219,6 +219,9 @@ static __device__ __forceinline__ float vec_dot_q5_K_q8_1_wide(
 
 // p104 k1: on Pascal (sm_61) the K-quant mat-vec is latency bound with 8 weight bytes per thread.
 // Wide variant: each thread handles a whole 32-byte quant run (two 16-byte loads) of one sub-block pair.
+#ifndef P104_WIDE_MAX_NCOLS
+#define P104_WIDE_MAX_NCOLS 3
+#endif
 #ifndef P104_NW
 #define P104_NW 2
 #endif
@@ -623,13 +626,13 @@ static constexpr __device__ int get_mmvq_mmid_max_batch_for_device() {
 #endif
 }
 
-// The wide vec_dot is only used for one column, the multi-column launch shapes are tuned for vdr 2.
+// The wide vec_dot is used for up to P104_WIDE_MAX_NCOLS columns; with 4..8 columns it was slower than vdr 2.
 static constexpr __host__ __device__ int get_vdr_mmvq_tbl(ggml_type type, mmvq_parameter_table_id table_id, int ncols_dst) {
-    return table_id == MMVQ_PARAMETERS_PASCAL && ncols_dst == 1 && mmvq_pascal_wide(type) ? 8 : get_vdr_mmvq(type);
+    return table_id == MMVQ_PARAMETERS_PASCAL && ncols_dst <= P104_WIDE_MAX_NCOLS && mmvq_pascal_wide(type) ? 8 : get_vdr_mmvq(type);
 }
 
 static constexpr __device__ vec_dot_q_cuda_t get_vec_dot_q_cuda_tbl(ggml_type type, mmvq_parameter_table_id table_id, int ncols_dst) {
-    if (table_id == MMVQ_PARAMETERS_PASCAL && ncols_dst == 1) {
+    if (table_id == MMVQ_PARAMETERS_PASCAL && ncols_dst <= P104_WIDE_MAX_NCOLS) {
         switch (type) {
             case GGML_TYPE_Q4_K: return vec_dot_q4_K_q8_1_wide;
             case GGML_TYPE_Q5_K: return vec_dot_q5_K_q8_1_wide;
