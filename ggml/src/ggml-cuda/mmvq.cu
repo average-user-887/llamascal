@@ -274,7 +274,7 @@ static __device__ __forceinline__ void p104_load_ints_b2(const uint8_t * p, int 
 
 // p104 k3: upstream vec_dot_q6_K_q8_1 with the number of contiguous ints per thread as a template parameter. The
 // upstream index math already keeps vdr = 4 inside one 16-value scale group, one q8_1 block and one qh shift.
-template <int vdr>
+template <int vdr, bool presub = false>
 static __device__ __forceinline__ float vec_dot_q6_K_q8_1_v(
     const void * __restrict__ vbq, const block_q8_1 * __restrict__ bq8_1, const int & kbx, const int & iqs) {
 
@@ -304,8 +304,16 @@ static __device__ __forceinline__ float vec_dot_q6_K_q8_1_v(
             const int vil = (vl[j] >> (4*i)) & 0x0F0F0F0F;
             const int vih = (((vh[j] >> vh_shift) >> (4*i)) << 4) & 0x30303030;
             const int u   = __ldg(q8 + j);
-            sumi = ggml_cuda_dp4a(vil | vih, u, sumi);
-            sumi = ggml_cuda_dp4a(0xE0E0E0E0, u, sumi);
+            if constexpr (presub) {
+                // q - 32 per byte as int8 without a second dp4a (worth it once several columns share the weights):
+                // x = q ^ 0x20 is q - 32 for q >= 32; for q < 32 bit 5 of x is set and bits 6, 7 must be set too
+                const int x = (vil | vih) ^ 0x20202020;
+                const int m = x & 0x20202020;
+                sumi = ggml_cuda_dp4a(x | (m << 1) | (m << 2), u, sumi);
+            } else {
+                sumi = ggml_cuda_dp4a(vil | vih, u, sumi);
+                sumi = ggml_cuda_dp4a(0xE0E0E0E0, u, sumi);
+            }
         }
         sumf += __low2float(__ldg(&bq8i->ds)) * (sumi * sc);
     }
@@ -349,6 +357,10 @@ static __device__ __forceinline__ float vec_dot_q6_K_q8_1_v(
 // p104 k3: launch shape for the wide Q4_K/Q5_K path at 4..8 columns (used only if P104_WIDE_MAX_NCOLS >= 4)
 // p104 k3: from this many columns on, the wide vec_dots take the Q4_K/Q5_K min term from the stored q8_1 block sums
 // (ds.y, like MMQ) instead of an exact dp4a sum: halves the dp4a work, changes rounding (KLD-gated). 99 = off.
+// p104 k3: from this many columns on, Q6_K subtracts the 32 offset in the weights instead of with a second dp4a. 99 = off.
+#ifndef P104_Q6_PRESUB_MINCOLS
+#define P104_Q6_PRESUB_MINCOLS 99
+#endif
 #ifndef P104_DS_MINCOLS
 #define P104_DS_MINCOLS 99
 #endif
@@ -768,6 +780,9 @@ static constexpr __device__ vec_dot_q_cuda_t get_vec_dot_q_cuda_tbl(ggml_type ty
     }
     if (table_id == MMVQ_PARAMETERS_PASCAL && ncols_dst == 1 && type == GGML_TYPE_Q6_K && (P104_Q6_VDR != 2 || P104_Q6_LD != 0)) {
         return vec_dot_q6_K_q8_1_v<P104_Q6_VDR>;
+    }
+    if (table_id == MMVQ_PARAMETERS_PASCAL && ncols_dst >= P104_Q6_PRESUB_MINCOLS && type == GGML_TYPE_Q6_K) {
+        return ncols_dst <= 3 ? vec_dot_q6_K_q8_1_v<P104_Q6_VDR_N23, true> : vec_dot_q6_K_q8_1_v<2, true>;
     }
     if (table_id == MMVQ_PARAMETERS_PASCAL && ncols_dst >= 2 && ncols_dst <= 3 && type == GGML_TYPE_Q6_K && (P104_Q6_VDR_N23 != 2 || P104_Q6_LD != 0)) {
         return vec_dot_q6_K_q8_1_v<P104_Q6_VDR_N23>;
