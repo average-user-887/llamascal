@@ -14192,7 +14192,15 @@ static std::vector<std::unique_ptr<test_case>> make_test_cases_perf() {
     // p104 k1: decode shapes of Qwen3.5-9B Q4_K_M (m = rows, k = cols), n = 1
     for (ggml_type t : {GGML_TYPE_Q4_K, GGML_TYPE_Q5_K, GGML_TYPE_Q6_K}) {
         for (auto mk : std::vector<std::pair<int64_t, int64_t>>{{12288, 4096}, {4096, 12288}, {4096, 4096}, {8192, 4096}, {1024, 4096}, {248320, 4096}}) {
-            test_cases.emplace_back(new test_mul_mat(t, GGML_TYPE_F32, mk.first, 1, mk.second, {1, 1}, {1, 1}));
+            for (int n : {1, 2, 3}) {
+                test_cases.emplace_back(new test_mul_mat(t, GGML_TYPE_F32, mk.first, n, mk.second, {1, 1}, {1, 1}));
+            }
+        }
+        // p104 k1 review finding 8: small K around the small_k threshold
+        for (int64_t k : {2048, 2560, 3072}) {
+            for (int n : {1, 2, 3}) {
+                test_cases.emplace_back(new test_mul_mat(t, GGML_TYPE_F32, 4096, n, k, {1, 1}, {1, 1}));
+            }
         }
     }
     // p104 k1: fused gate/up + SWIGLU decode (ffn_gate/ffn_up 4096 -> 12288)
