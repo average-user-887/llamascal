@@ -108,22 +108,23 @@ static __device__ __forceinline__ float vec_dot_q4_K_q8_1_wide(
     int v[8];
     if ((((uintptr_t) vbq) & 15) == 0 && !P104_FORCE_SCALAR_LOADS) {
         const int4 * q4 = (const int4 *) (bq4_K->qs + 32*j);
-        const int4 v0 = q4[0];
-        const int4 v1 = q4[1];
+        const int4 v0 = __ldg(q4 + 0);
+        const int4 v1 = __ldg(q4 + 1);
         v[0] = v0.x; v[1] = v0.y; v[2] = v0.z; v[3] = v0.w; v[4] = v1.x; v[5] = v1.y; v[6] = v1.z; v[7] = v1.w;
     } else {
 #pragma unroll
         for (int l = 0; l < 8; ++l) {
-            v[l] = get_int_b4(bq4_K->qs + 32*j, l);
+            v[l] = __ldg((const int *) (bq4_K->qs + 32*j) + l);
         }
     }
 
     const uint16_t * scales = (const uint16_t *)bq4_K->scales;
     const int jm = j & 1;
 
-    const uint32_t s0 = scales[jm + 0];
-    const uint32_t s2 = scales[jm + 2];
-    const uint32_t s4 = scales[jm + 4];
+    // __ldg: the alignment branch otherwise costs the read-only (LDG.CI) path for all loads of this function
+    const uint32_t s0 = __ldg(scales + jm + 0);
+    const uint32_t s2 = __ldg(scales + jm + 2);
+    const uint32_t s4 = __ldg(scales + jm + 4);
 
     const uint32_t hi = (uint32_t) -(int32_t) (j >= 2);
 
@@ -145,17 +146,17 @@ static __device__ __forceinline__ float vec_dot_q4_K_q8_1_wide(
         int sumi_m = 0;
 #pragma unroll
         for (int l = 0; l < QI8_1; ++l) {
-            const int u = q8[l];
+            const int u = __ldg(q8 + l);
             sumi_d = ggml_cuda_dp4a((v[l] >> (4*i)) & 0x0F0F0F0F, u, sumi_d);
             sumi_m = ggml_cuda_dp4a(0x01010101, u, sumi_m);
         }
 
-        const float2 ds8f = __half22float2(bq8i->ds);
+        const float2 ds8f = __half22float2(__ldg(&bq8i->ds));
         sumf_d += ds8f.x * (sc[i] * sumi_d);
         sumf_m += ds8f.x * (sumi_m * m[i]);
     }
 
-    const float2 dm4f = __half22float2(bq4_K->dm);
+    const float2 dm4f = __half22float2(__ldg(&bq4_K->dm));
 
     return dm4f.x*sumf_d - dm4f.y*sumf_m;
 }
@@ -173,17 +174,17 @@ static __device__ __forceinline__ float vec_dot_q5_K_q8_1_wide(
     if ((((uintptr_t) vbq) & 15) == 0 && !P104_FORCE_SCALAR_LOADS) {
         const int4 * q5 = (const int4 *) (bq5_K->qs + 32*j);
         const int4 * qh = (const int4 *) bq5_K->qh;
-        const int4 v0 = q5[0];
-        const int4 v1 = q5[1];
-        const int4 h0 = qh[0];
-        const int4 h1 = qh[1];
+        const int4 v0 = __ldg(q5 + 0);
+        const int4 v1 = __ldg(q5 + 1);
+        const int4 h0 = __ldg(qh + 0);
+        const int4 h1 = __ldg(qh + 1);
         v[0] = v0.x; v[1] = v0.y; v[2] = v0.z; v[3] = v0.w; v[4] = v1.x; v[5] = v1.y; v[6] = v1.z; v[7] = v1.w;
         vh[0] = h0.x; vh[1] = h0.y; vh[2] = h0.z; vh[3] = h0.w; vh[4] = h1.x; vh[5] = h1.y; vh[6] = h1.z; vh[7] = h1.w;
     } else {
 #pragma unroll
         for (int l = 0; l < 8; ++l) {
-            v[l]  = get_int_b4(bq5_K->qs + 32*j, l);
-            vh[l] = get_int_b4(bq5_K->qh, l);
+            v[l]  = __ldg((const int *) (bq5_K->qs + 32*j) + l);
+            vh[l] = __ldg((const int *) bq5_K->qh + l);
         }
     }
 #pragma unroll
@@ -194,9 +195,10 @@ static __device__ __forceinline__ float vec_dot_q5_K_q8_1_wide(
     const uint16_t * scales = (const uint16_t *)bq5_K->scales;
     const int jm = j & 1;
 
-    const uint32_t s0 = scales[jm + 0];
-    const uint32_t s2 = scales[jm + 2];
-    const uint32_t s4 = scales[jm + 4];
+    // __ldg: the alignment branch otherwise costs the read-only (LDG.CI) path for all loads of this function
+    const uint32_t s0 = __ldg(scales + jm + 0);
+    const uint32_t s2 = __ldg(scales + jm + 2);
+    const uint32_t s4 = __ldg(scales + jm + 4);
 
     const uint32_t hi = (uint32_t) -(int32_t) (j >= 2);
 
@@ -218,18 +220,18 @@ static __device__ __forceinline__ float vec_dot_q5_K_q8_1_wide(
         int sumi_m = 0;
 #pragma unroll
         for (int l = 0; l < QI8_1; ++l) {
-            const int u = q8[l];
+            const int u = __ldg(q8 + l);
             const int vl = ((v[l] >> (4*i)) & 0x0F0F0F0F) | ((vh[l] << (4 - i)) & 0x10101010);
             sumi_d = ggml_cuda_dp4a(vl, u, sumi_d);
             sumi_m = ggml_cuda_dp4a(0x01010101, u, sumi_m);
         }
 
-        const float d8 = __low2float(bq8i->ds);
+        const float d8 = __low2float(__ldg(&bq8i->ds));
         sumf_d += d8 * (sc[i] * sumi_d);
         sumf_m += d8 * (sumi_m * m[i]);
     }
 
-    const float2 dm5f = __half22float2(bq5_K->dm);
+    const float2 dm5f = __half22float2(__ldg(&bq5_K->dm));
 
     return dm5f.x*sumf_d - dm5f.y*sumf_m;
 }
