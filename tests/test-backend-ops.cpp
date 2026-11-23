@@ -14189,6 +14189,16 @@ static std::vector<std::unique_ptr<test_case>> make_test_cases_perf() {
         test_cases.emplace_back(new test_mul_mat(GGML_TYPE_Q4_K, GGML_TYPE_F32, 14336, n, 4096, {1, 1}, {1, 1}));
     }
 
+    // p104 k1: decode shapes of Qwen3.5-9B Q4_K_M (m = rows, k = cols), n = 1
+    for (ggml_type t : {GGML_TYPE_Q4_K, GGML_TYPE_Q5_K, GGML_TYPE_Q6_K}) {
+        for (auto mk : std::vector<std::pair<int64_t, int64_t>>{{12288, 4096}, {4096, 12288}, {4096, 4096}, {8192, 4096}, {1024, 4096}, {248320, 4096}}) {
+            test_cases.emplace_back(new test_mul_mat(t, GGML_TYPE_F32, mk.first, 1, mk.second, {1, 1}, {1, 1}));
+        }
+    }
+    // p104 k1: fused gate/up + SWIGLU decode (ffn_gate/ffn_up 4096 -> 12288)
+    test_cases.emplace_back(new test_mul_mat_fusion(GGML_TYPE_Q4_K, GGML_GLU_OP_SWIGLU, 1, 12288, 4096,
+        false, 1, 1, false, false, true, false, {1, 1}));
+
     // Q4_K multi-column mat-vec
     for (int64_t m : {4096, 6144, 6272, 14336}) {
         for (int bs : {1, 2, 3, 4, 8}) {

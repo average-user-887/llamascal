@@ -4,6 +4,8 @@
 #include "vecdotq.cuh"
 
 #include <cstdint>
+#include <cstdio>
+#include <cstdlib>
 #include <type_traits>
 
 // only enabled on DGX Spark, where it is a gain on every type below. On the higher-bandwidth parts the kernel
@@ -1180,6 +1182,12 @@ static void mul_mat_vec_q_moe_launch(
     }
 }
 
+// p104 k1: dispatch trace, enabled by GGML_P104_MMVQ_LOG (attribution builds only)
+static bool p104_mmvq_log() {
+    static const bool enabled = getenv("GGML_P104_MMVQ_LOG") != nullptr;
+    return enabled;
+}
+
 template <ggml_type type>
 static void mul_mat_vec_q_switch_ncols_dst(
         const void * vx, const void * vy, const int32_t * ids, const ggml_cuda_mm_fusion_args_device fusion, float * dst,
@@ -1297,6 +1305,11 @@ static void mul_mat_vec_q_switch_ncols_dst(
 
                 const std::pair<dim3, dim3> dims = calc_launch_params<type>(c_ncols_dst, nrows_x, nchannels_dst + (fusion.shared_up != nullptr),
                                                                               nsamples_dst, warp_size, table_id, c_small_k, c_halve_iters);
+                if (p104_mmvq_log()) {
+                    fprintf(stderr, "p104mmvq type=%s k=%d m=%d ncols_dst=1 ids=%d gate=%d table=%d vdr=%d nwarps=%u grid=%u small_k=%d\n",
+                        ggml_type_name(type), ncols_x, nrows_x, ids != nullptr, fusion.gate != nullptr, (int) table_id,
+                        get_vdr_mmvq(type), dims.second.y, dims.first.x, (int) c_small_k);
+                }
                 mul_mat_vec_q_switch_fusion<type, c_ncols_dst, c_small_k, c_halve_iters>(
                     vx, vy, ids, fusion, dst, ncols_x, nchannels_y_fd, stride_row_x, stride_col_y, stride_col_dst,
                     channel_ratio_fd, stride_channel_x, stride_channel_y, stride_channel_dst, sample_ratio_fd,
