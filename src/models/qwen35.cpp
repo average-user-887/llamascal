@@ -685,6 +685,12 @@ llama_model_qwen35::graph_mtp::graph_mtp(const llm_graph_params & params)
         if (n_dv > 0 && n_dv < head_w->ne[1] && head_s == nullptr && all_backend) {
             head_w = ggml_view_2d(ctx0, head_w, head_w->ne[0], n_dv, head_w->nb[1], 0);
             cb(head_w, "mtp_head_w_reduced", -1);
+            static bool logged = false;
+            if (!logged) {
+                logged = true;
+                LLAMA_LOG_INFO("%s: p104 MTP draft head reduced to %lld x %lld (n_outputs %d)\n", __func__,
+                        (long long) head_w->ne[0], (long long) head_w->ne[1], (int) n_outputs);
+            }
         }
     }
 
