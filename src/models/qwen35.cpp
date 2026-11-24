@@ -662,6 +662,32 @@ llama_model_qwen35::graph_mtp::graph_mtp(const llm_graph_params & params)
     ggml_tensor * head_w = layer.nextn.shared_head_head ? layer.nextn.shared_head_head : model.output;
     ggml_tensor * head_s = layer.nextn.shared_head_head ? layer.nextn.shared_head_head_s : model.output_s;
     GGML_ASSERT(head_w && "QWEN35 MTP: missing LM head (nextn.shared_head_head or model.output)");
+
+    // p104 CARD-2: draft over a reduced vocabulary (prefix of the token ids, zero-copy view).
+    // P104_MTP_DRAFT_VOCAB=N (0/unset = off). Only the draft graph is touched; the target verify
+    // stays full-vocab, so the output is unchanged. Applied only when every output row of the
+    // ubatch has a backend sampler (otherwise the context would copy n_vocab-wide raw logits).
+    {
+        static const int64_t n_dv = [] {
+            const char * e = getenv("P104_MTP_DRAFT_VOCAB");
+            const int64_t v = e ? atoll(e) : 0;
+            if (v > 0) {
+                LLAMA_LOG_INFO("%s: p104 MTP draft vocab = %lld (prefix)\n", __func__, (long long) v);
+            }
+            return v;
+        }();
+        bool all_backend = !samplers.empty();
+        for (uint32_t i = 0; all_backend && i < ubatch.n_tokens; ++i) {
+            if (ubatch.output[i] && samplers.find(ubatch.seq_id[i][0]) == samplers.end()) {
+                all_backend = false;
+            }
+        }
+        if (n_dv > 0 && n_dv < head_w->ne[1] && head_s == nullptr && all_backend) {
+            head_w = ggml_view_2d(ctx0, head_w, head_w->ne[0], n_dv, head_w->nb[1], 0);
+            cb(head_w, "mtp_head_w_reduced", -1);
+        }
+    }
+
     cur = build_lora_mm(head_w, cur, head_s);
     cb(cur, "result_output", -1);
 
