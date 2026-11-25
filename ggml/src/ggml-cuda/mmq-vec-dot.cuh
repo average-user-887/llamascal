@@ -902,36 +902,75 @@ template <ggml_type type, int J, bool fallback> static __device__ __forceinline_
     }
 }
 
+// p104 c7: dp4a sums start at 0x4B400000 (= 12582912.0f = 1.5*2^23). For |sumi| < 2^22 the int bits of the result are
+// exactly the float 12582912 + sumi, so __int_as_float(acc) - 12582912.0f == (float) sumi without an I2F (quarter rate on sm_61).
+#define P104_MMQ_MAGIC_I 0x4B400000
+#define P104_MMQ_MAGIC_F 12582912.0f
+
 template <ggml_type type, int J, bool fallback> static __device__ __forceinline__ void ggml_cuda_mmq_vec_dot_q4_K_q8_1_dp4a(
         const int * __restrict__ x, const int * __restrict__ y, float * __restrict__ sum, const int k00) {
     constexpr int warp_size = ggml_cuda_get_physical_warp_size();
     constexpr int nwarps    = ggml_cuda_mmq_get_nthreads(type, J, fallback, GGML_PREC_Q8) / warp_size;
     constexpr int I         = ggml_cuda_mmq_get_I(type, J, fallback, GGML_PREC_Q8);
+    // The dispatch table instantiates this for every type; it only runs for GGML_TYPE_Q4_K, which has the f32 y ds area.
+    static_assert(type != GGML_TYPE_Q4_K || ggml_cuda_mmq_y_ds_f32_nints<type, J>() == J*MMQ_Y_DS_F32_NE*2, "Q4_K dp4a needs the f32 y ds area");
 
     constexpr tile_x_sizes txs = mmq_get_dp4a_tile_x_sizes(GGML_TYPE_Q4_K, I);
-    const int   * x_qs = (const int   *) x;
-    const half2 * x_dm = (const half2 *) x_qs + txs.qs;
-    const int   * x_sc = (const int   *) x_dm + txs.dm;
-    const int   * y_qs = (const int   *) y + 4;
-    const half2 * y_ds = (const half2 *) y;
+    const int    * x_qs = (const int   *) x;
+    const half2  * x_dm = (const half2 *) x_qs + txs.qs;
+    const int    * x_sc = (const int   *) x_dm + txs.dm;
+    const int    * y_qs = (const int   *) y + 4;
+    const float2 * y_ds = (const float2 *) (y - ggml_cuda_mmq_y_ds_f32_nints<type, J>()); // (d, s) per column and q8_1 block
 
 // #pragma unroll
     for (int k01 = 0; k01 < MMQ_TILE_NE_K; k01 += QR4_K*VDR_Q4_K_Q8_1_MMQ) {
         const int k0 = k00 + k01;
 
+        // Row side, hoisted out of the column loop: nibbles and float scales (d*sc, dmin*m) of the 2 q8_1 blocks.
+        int   vl[I/warp_size][QI8_1];
+        int   vh[I/warp_size][QI8_1];
+        float wd[I/warp_size][2];
+        float wm[I/warp_size][2];
+#pragma unroll
+        for (int i0 = 0; i0 < I; i0 += warp_size) {
+            const int i = i0 + threadIdx.x;
+            const uint8_t * sc = (const uint8_t *) &x_sc[i * (MMQ_TILE_NE_K/8) + i/8 + k0/32] + 2*(k01/16);
+            const int * v = &x_qs[i*(MMQ_TILE_NE_K + 1) + k0/2];
+#pragma unroll
+            for (int l = 0; l < QI8_1; ++l) {
+                vl[i0/warp_size][l] =  v[l]       & 0x0F0F0F0F;
+                vh[i0/warp_size][l] = (v[l] >> 4) & 0x0F0F0F0F;
+            }
+            const float2 dm = __half22float2(x_dm[i]);
+#pragma unroll
+            for (int b = 0; b < 2; ++b) {
+                wd[i0/warp_size][b] = dm.x * sc[b];
+                wm[i0/warp_size][b] = dm.y * sc[b + 8];
+            }
+        }
+
 #pragma unroll
         for (int j0 = 0; j0 < J; j0 += nwarps) {
             const int j = j0 + threadIdx.y;
+            const int * u = &y_qs[j*MMQ_TILE_Y_K + k01];
+            const float2 ds0 = y_ds[j*MMQ_Y_DS_F32_NE + k01/QI8_1 + 0];
+            const float2 ds1 = y_ds[j*MMQ_Y_DS_F32_NE + k01/QI8_1 + 1];
 
 #pragma unroll
             for (int i0 = 0; i0 < I; i0 += warp_size) {
-                const int i = i0 + threadIdx.x;
-
-                const uint8_t * sc = (const uint8_t *) &x_sc[i * (MMQ_TILE_NE_K/8) + i/8 + k0/32] + 2*(k01/16);
-
-                sum[j0/nwarps*I/warp_size + i0/warp_size] += vec_dot_q4_K_q8_1_impl_mmq(
-                    &x_qs[i*(MMQ_TILE_NE_K + 1) + k0/2], &y_qs[j*MMQ_TILE_Y_K + k01], sc, sc+8,
-                    x_dm[i], &y_ds[j*MMQ_TILE_Y_K + k01/QI8_1]);
+                int s0 = P104_MMQ_MAGIC_I;
+                int s1 = P104_MMQ_MAGIC_I;
+#pragma unroll
+                for (int l = 0; l < QI8_1; ++l) {
+                    s0 = ggml_cuda_dp4a(vl[i0/warp_size][l], u[l],         s0);
+                    s1 = ggml_cuda_dp4a(vh[i0/warp_size][l], u[QI8_1 + l], s1);
+                }
+                float acc = sum[j0/nwarps*I/warp_size + i0/warp_size];
+                acc = fmaf(__int_as_float(s0) - P104_MMQ_MAGIC_F, wd[i0/warp_size][0]*ds0.x, acc);
+                acc = fmaf(__int_as_float(s1) - P104_MMQ_MAGIC_F, wd[i0/warp_size][1]*ds1.x, acc);
+                acc = fmaf(-wm[i0/warp_size][0], ds0.y, acc);
+                acc = fmaf(-wm[i0/warp_size][1], ds1.y, acc);
+                sum[j0/nwarps*I/warp_size + i0/warp_size] = acc;
             }
         }
     }
@@ -942,31 +981,58 @@ template <ggml_type type, int J, bool fallback> static __device__ __forceinline_
     constexpr int warp_size = ggml_cuda_get_physical_warp_size();
     constexpr int nwarps    = ggml_cuda_mmq_get_nthreads(type, J, fallback, GGML_PREC_Q8) / warp_size;
     constexpr int I         = ggml_cuda_mmq_get_I(type, J, fallback, GGML_PREC_Q8);
+    // The dispatch table instantiates this for every type; it only runs for GGML_TYPE_Q5_K, which has the f32 y ds area.
+    static_assert(type != GGML_TYPE_Q5_K || ggml_cuda_mmq_y_ds_f32_nints<type, J>() == J*MMQ_Y_DS_F32_NE*2, "Q5_K dp4a needs the f32 y ds area");
 
     constexpr tile_x_sizes txs = mmq_get_dp4a_tile_x_sizes(GGML_TYPE_Q5_K, I);
-    const int   * x_qs = (const int   *) x;
-    const half2 * x_dm = (const half2 *) x_qs + txs.qs;
-    const int   * x_sc = (const int   *) x_dm + txs.dm;
-    const int   * y_qs = (const int   *) y + 4;
-    const half2 * y_ds = (const half2 *) y;
+    const int    * x_qs = (const int   *) x;
+    const half2  * x_dm = (const half2 *) x_qs + txs.qs;
+    const int    * x_sc = (const int   *) x_dm + txs.dm;
+    const int    * y_qs = (const int   *) y + 4;
+    const float2 * y_ds = (const float2 *) (y - ggml_cuda_mmq_y_ds_f32_nints<type, J>());
 
 // #pragma unroll
     for (int k01 = 0; k01 < MMQ_TILE_NE_K; k01 += QR5_K*VDR_Q5_K_Q8_1_MMQ) {
         const int k0 = k00 + k01;
 
+        float wd[I/warp_size][2];
+        float wm[I/warp_size][2];
+#pragma unroll
+        for (int i0 = 0; i0 < I; i0 += warp_size) {
+            const int i = i0 + threadIdx.x;
+            const uint8_t * sc = ((const uint8_t *) &x_sc[i * (MMQ_TILE_NE_K/8) + i/8 + k00/32]) + 2*(k01/16);
+            const float2 dm = __half22float2(x_dm[i]);
+#pragma unroll
+            for (int b = 0; b < 2; ++b) {
+                wd[i0/warp_size][b] = dm.x * sc[b];
+                wm[i0/warp_size][b] = dm.y * sc[b + 8];
+            }
+        }
+
 #pragma unroll
         for (int j0 = 0; j0 < J; j0 += nwarps) {
             const int j = j0 + threadIdx.y;
+            const int * u = &y_qs[j*MMQ_TILE_Y_K + k01];
+            const float2 ds0 = y_ds[j*MMQ_Y_DS_F32_NE + k01/QI8_1 + 0];
+            const float2 ds1 = y_ds[j*MMQ_Y_DS_F32_NE + k01/QI8_1 + 1];
 
 #pragma unroll
             for (int i0 = 0; i0 < I; i0 += warp_size) {
                 const int i = i0 + threadIdx.x;
-
-                const uint8_t * sc = ((const uint8_t *) &x_sc[i * (MMQ_TILE_NE_K/8) + i/8 + k00/32]) + 2*(k01/16);
-
-                sum[j0/nwarps*I/warp_size + i0/warp_size] += vec_dot_q5_K_q8_1_impl_mmq(
-                    &x_qs[i*(QR5_K*MMQ_TILE_NE_K + 1) + k0], &y_qs[j*MMQ_TILE_Y_K + k01], sc, sc+8,
-                    x_dm[i], &y_ds[j*MMQ_TILE_Y_K + k01/QI8_1]);
+                const int * v = &x_qs[i*(QR5_K*MMQ_TILE_NE_K + 1) + k0];
+                int s0 = P104_MMQ_MAGIC_I;
+                int s1 = P104_MMQ_MAGIC_I;
+#pragma unroll
+                for (int l = 0; l < QI8_1; ++l) {
+                    s0 = ggml_cuda_dp4a(v[l],         u[l],         s0);
+                    s1 = ggml_cuda_dp4a(v[QI8_1 + l], u[QI8_1 + l], s1);
+                }
+                float acc = sum[j0/nwarps*I/warp_size + i0/warp_size];
+                acc = fmaf(__int_as_float(s0) - P104_MMQ_MAGIC_F, wd[i0/warp_size][0]*ds0.x, acc);
+                acc = fmaf(__int_as_float(s1) - P104_MMQ_MAGIC_F, wd[i0/warp_size][1]*ds1.x, acc);
+                acc = fmaf(-wm[i0/warp_size][0], ds0.y, acc);
+                acc = fmaf(-wm[i0/warp_size][1], ds1.y, acc);
+                sum[j0/nwarps*I/warp_size + i0/warp_size] = acc;
             }
         }
     }
@@ -989,19 +1055,45 @@ template <ggml_type type, int J, bool fallback> static __device__ __forceinline_
     for (int k01 = 0; k01 < MMQ_TILE_NE_K; k01 += QR6_K*VDR_Q6_K_Q8_1_MMQ) {
         const int k0 = k00 + k01;
 
+        // Row side: d6*sc for the 4 q6_K scales (16 values each) of the 2 q8_1 blocks, as floats.
+        float w[I/warp_size][4];
+#pragma unroll
+        for (int i0 = 0; i0 < I; i0 += warp_size) {
+            const int i = i0 + threadIdx.x;
+            const int sc_packed = get_int_b4((const int8_t *) &x_sc[i * (MMQ_TILE_NE_K/8) + i/8 + k0/16], 0);
+            const int8_t * sc_reg = (const int8_t *) &sc_packed;
+            const float d6 = x_df[i*(MMQ_TILE_NE_K/QI6_K) + i/QI6_K];
+#pragma unroll
+            for (int b = 0; b < 4; ++b) {
+                w[i0/warp_size][b] = d6 * sc_reg[b];
+            }
+        }
+
 #pragma unroll
         for (int j0 = 0; j0 < J; j0 += nwarps) {
             const int j = j0 + threadIdx.y;
+            const int * u = &y_qs[j*MMQ_TILE_Y_K + k01];
+            const float * d8 = &y_df[j*MMQ_TILE_Y_K + k01/QI8_1];
 
 #pragma unroll
             for (int i0 = 0; i0 < I; i0 += warp_size) {
                 const int i = i0 + threadIdx.x;
-
-                const int8_t * sc = ((const int8_t *) &x_sc[i * (MMQ_TILE_NE_K/8) + i/8 + k0/16]);
-
-                sum[j0/nwarps*I/warp_size + i0/warp_size] += vec_dot_q6_K_q8_1_impl_mmq(
-                    &x_qs[i*(QR6_K*MMQ_TILE_NE_K + 1) + k0], &y_qs[j*MMQ_TILE_Y_K + k01], sc,
-                    x_df[i*(MMQ_TILE_NE_K/QI6_K) + i/QI6_K], &y_df[j*MMQ_TILE_Y_K + k01/QI8_1]);
+                const int * v = &x_qs[i*(QR6_K*MMQ_TILE_NE_K + 1) + k0];
+                float acc = sum[j0/nwarps*I/warp_size + i0/warp_size];
+#pragma unroll
+                for (int g = 0; g < 2; ++g) { // q8_1 block
+                    int sx = P104_MMQ_MAGIC_I;
+                    int sy = P104_MMQ_MAGIC_I;
+#pragma unroll
+                    for (int l = 0; l < 4; ++l) {
+                        sx = ggml_cuda_dp4a(v[8*g + l],     u[8*g + l],     sx);
+                        sy = ggml_cuda_dp4a(v[8*g + 4 + l], u[8*g + 4 + l], sy);
+                    }
+                    float t = (__int_as_float(sx) - P104_MMQ_MAGIC_F) * w[i0/warp_size][2*g + 0];
+                    t = fmaf(__int_as_float(sy) - P104_MMQ_MAGIC_F, w[i0/warp_size][2*g + 1], t);
+                    acc = fmaf(t, d8[g], acc);
+                }
+                sum[j0/nwarps*I/warp_size + i0/warp_size] = acc;
             }
         }
     }

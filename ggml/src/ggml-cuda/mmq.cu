@@ -4,6 +4,10 @@
 #include "mmid.cuh"
 
 #include <cstdint>
+#include <cinttypes>
+#include <mutex>
+#include <set>
+#include <tuple>
 
 static void ggml_cuda_mul_mat_q_switch_type(ggml_backend_cuda_context & ctx, const mmq_args & args, cudaStream_t stream, const ggml_prec prec_src1) {
     switch (args.type_x) {
@@ -259,6 +263,23 @@ void ggml_cuda_mul_mat_q(
         J_best = ggml_cuda_mmq_get_J_best(src0->type, ncols_opt, fallback, cc, smpbo, prec_src1, &nthreads_best);
     }
     GGML_ASSERT(J_best > 0);
+
+    { // p104 c7: GGML_P104_MMQ_LOG=1 prints the tile instance once per (type, ne01, ne11, ids) shape (dispatch gate).
+        static const bool log_mmq = getenv("GGML_P104_MMQ_LOG") != nullptr;
+        if (log_mmq) {
+            static std::mutex mtx;
+            static std::set<std::tuple<int, int64_t, int64_t, bool>> seen;
+            std::lock_guard<std::mutex> lock(mtx);
+            if (seen.insert({(int) src0->type, ne01, ne11, ids != nullptr}).second) {
+                const ggml_cuda_mmq_config cfg = ggml_cuda_mmq_get_config(src0->type, J_best, fallback, cc, prec_src1);
+                GGML_LOG_INFO("p104-mmq: type=%s ne01=%" PRId64 " ne11=%" PRId64 " ids=%d -> J=%d I=%d nthreads=%d occ=%d stream_k=%d fallback=%d "
+                              "smem=%zu y_ds_f32_ints=%d fusion=%d\n",
+                              ggml_type_name(src0->type), ne01, ne11, ids != nullptr, cfg.J, cfg.I, cfg.nthreads, cfg.occupancy,
+                              (int) cfg.stream_k, (int) fallback, mmq_get_nbytes_shared(cfg, cc), ggml_cuda_mmq_y_ds_f32_nints(cfg, cc),
+                              fusion != nullptr);
+            }
+        }
+    }
 
     // A tile of size J can read in at most J - 1 extra columns.
     // For simplicity, round up the padding of a full tile to a multiple of the number of bytes that nthreads can load in parallel.

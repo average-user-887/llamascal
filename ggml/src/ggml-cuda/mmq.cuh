@@ -377,6 +377,24 @@ static constexpr __device__ int ggml_cuda_mmq_get_sram_stride(ggml_type type, in
     return ggml_cuda_mmq_get_sram_stride(ggml_cuda_mmq_get_sram_layout(type, J, fallback, prec_src1));
 }
 
+// p104 c7: on the dp4a (non-MMA) path Q4_K/Q5_K keep the q8_1 (d, s) pairs of the y tile as float2 in an extra
+// shared memory area of J*(MMQ_TILE_NE_K/QI8_1) float2, converted once per block during the y copy instead of
+// once per thread and k step (F2F is quarter rate on sm_61). The area sits between ids_dst and tile_y.
+static constexpr __host__ __device__ bool ggml_cuda_mmq_y_ds_f32_type(const ggml_type type) {
+    return type == GGML_TYPE_Q4_K || type == GGML_TYPE_Q5_K;
+}
+#define MMQ_Y_DS_F32_NE (MMQ_TILE_NE_K/QI8_1) // float2 per column
+static __host__ int ggml_cuda_mmq_y_ds_f32_nints(const ggml_cuda_mmq_config & config, const int cc) {
+    return ggml_cuda_mmq_y_ds_f32_type(config.type) && !config.use_mma_data_layout(cc) ? config.J*MMQ_Y_DS_F32_NE*2 : 0;
+}
+template <ggml_type type, int J> static constexpr __device__ int ggml_cuda_mmq_y_ds_f32_nints() {
+#if defined(AMD_MFMA_AVAILABLE) || defined(AMD_WMMA_AVAILABLE) || defined(TURING_MMA_AVAILABLE)
+    return 0;
+#else
+    return ggml_cuda_mmq_y_ds_f32_type(type) ? J*MMQ_Y_DS_F32_NE*2 : 0;
+#endif
+}
+
 static __host__ bool ggml_cuda_mmq_needs_fallback(const int64_t nrows_x) {
     return nrows_x % 128 != 0;
 }
@@ -954,7 +972,9 @@ static __device__ __forceinline__ void mul_mat_q_process_tile(
     constexpr ggml_cuda_mmq_write_back_t write_back = ggml_cuda_mmq_get_write_back<type, J, fallback, prec_src1, has_fusion>();
 
     extern __shared__ int data_mul_mat_q[];
-    int * tile_y = data_mul_mat_q + J;
+    constexpr int y_ds_f32_nints = ggml_cuda_mmq_y_ds_f32_nints<type, J>();
+    float2 * tile_y_ds = (float2 *) (data_mul_mat_q + J); // only used if y_ds_f32_nints > 0, directly below tile_y
+    int * tile_y = data_mul_mat_q + J + y_ds_f32_nints;
     int * tile_x = tile_y + GGML_PAD(J*MMQ_TILE_Y_K, nwarps*warp_size);
 
 #if defined(BLACKWELL_MMA_AVAILABLE)
@@ -983,6 +1003,16 @@ static __device__ __forceinline__ void mul_mat_q_process_tile(
 
                 tile_y[l] = by0[l];
             }
+            if constexpr (y_ds_f32_nints > 0) {
+#pragma unroll
+                for (int l0 = 0; l0 < J*MMQ_Y_DS_F32_NE; l0 += nwarps * warp_size) {
+                    const int l = l0 + threadIdx.y*warp_size + threadIdx.x;
+                    if (l0 + nwarps*warp_size <= J*MMQ_Y_DS_F32_NE || l < J*MMQ_Y_DS_F32_NE) {
+                        const half2 ds = ((const half2 *) by0)[(l/MMQ_Y_DS_F32_NE)*MMQ_TILE_Y_K + l % MMQ_Y_DS_F32_NE];
+                        tile_y_ds[l] = __half22float2(ds);
+                    }
+                }
+            }
         }
 
         __syncthreads();
@@ -998,6 +1028,16 @@ static __device__ __forceinline__ void mul_mat_q_process_tile(
                 int l = l0 + threadIdx.y*warp_size + threadIdx.x;
 
                 tile_y[l] = by0[l];
+            }
+            if constexpr (y_ds_f32_nints > 0) {
+#pragma unroll
+                for (int l0 = 0; l0 < J*MMQ_Y_DS_F32_NE; l0 += nwarps * warp_size) {
+                    const int l = l0 + threadIdx.y*warp_size + threadIdx.x;
+                    if (l0 + nwarps*warp_size <= J*MMQ_Y_DS_F32_NE || l < J*MMQ_Y_DS_F32_NE) {
+                        const half2 ds = ((const half2 *) by0)[(l/MMQ_Y_DS_F32_NE)*MMQ_TILE_Y_K + l % MMQ_Y_DS_F32_NE];
+                        tile_y_ds[l] = __half22float2(ds);
+                    }
+                }
             }
         }
 
@@ -1473,7 +1513,7 @@ struct mmq_args {
 };
 
 static size_t mmq_get_nbytes_shared(const ggml_cuda_mmq_config & config, const int cc) {
-    const size_t nbs_ids = config.J*sizeof(int);
+    const size_t nbs_ids = config.J*sizeof(int) + ggml_cuda_mmq_y_ds_f32_nints(config, cc)*sizeof(int);
     const size_t nbs_x = ggml_cuda_mmq_get_nbytes_shared_x(config, cc);
     const size_t nbs_y = config.J * (sizeof(block_q8_1_mmq));
     return nbs_ids + nbs_x + GGML_PAD(nbs_y, config.nthreads*sizeof(int));
