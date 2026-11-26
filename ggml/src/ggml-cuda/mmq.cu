@@ -261,6 +261,13 @@ void ggml_cuda_mul_mat_q(
         }
 
         J_best = ggml_cuda_mmq_get_J_best(src0->type, ncols_opt, fallback, cc, smpbo, prec_src1, &nthreads_best);
+        // p104: on Pascal, J=128 spills registers; avoid tail-wave when 1 < nblocks_128 / nsm < 2 (keeps <=nsm at 1 wave).
+        const int nsm = ggml_cuda_info().devices[id].nsm;
+        const int64_t nblocks_128 = (ne01 / 64) * ((ne11 + 127) / 128);
+        if (cc >= GGML_CUDA_CC_PASCAL && cc < GGML_CUDA_CC_VOLTA && !ids && J_best == 128 &&
+                nblocks_128 > nsm && nblocks_128 < 2 * nsm) {
+            J_best = ggml_cuda_mmq_get_J_best(src0->type, std::min<int64_t>(ncols_opt, 64), fallback, cc, smpbo, prec_src1, &nthreads_best);
+        }
     }
     GGML_ASSERT(J_best > 0);
 
