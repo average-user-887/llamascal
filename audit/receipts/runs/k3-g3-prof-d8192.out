@@ -1,0 +1,40 @@
+ggml_cuda_init: found 1 CUDA devices (Total VRAM: 8109 MiB):
+  Device 0: NVIDIA P104-100, compute capability 6.1, VMM: yes, VRAM: 8109 MiB
+| model                          |       size |     params | backend    | ngl |  fa |            test |                  t/s |
+| ------------------------------ | ---------: | ---------: | ---------- | --: | --: | --------------: | -------------------: |
+| qwen35 9B Q4_K - Medium        |   5.28 GiB |     8.95 B | CUDA       |  99 |   1 |    tg64 @ d8192 |         32.03 ± 0.00 |
+p104opprof graphs=65 skipped=16 total_ms=1910.285
+p104opprof    466.903 ms  24.44% n=4160 MUL_MAT:q4_K:12288x4096:n1
+p104opprof    224.269 ms  11.74% n=65 MUL_MAT:q6_K:248320x4096:n1
+p104opprof    194.603 ms  10.19% n=1040 MUL_MAT:q6_K:4096x12288:n1
+p104opprof    166.730 ms   8.73% n=1560 MUL_MAT:q5_K:8192x4096:n1
+p104opprof    117.179 ms   6.13% n=1040 MUL_MAT:q4_K:4096x12288:n1
+p104opprof    103.543 ms   5.42% n=2080 MUL_MAT:q4_K:4096x4096:n1
+p104opprof    102.093 ms   5.34% n=520 FLASH_ATTN_EXT
+p104opprof     90.367 ms   4.73% n=1560 MUL_MAT:q5_K:4096x4096:n1
+p104opprof     51.606 ms   2.70% n=26520 VIEW
+p104opprof     51.395 ms   2.69% n=9945 RMS_NORM
+p104opprof     43.448 ms   2.27% n=1560 GATED_DELTA_NET
+p104opprof     42.271 ms   2.21% n=3250 GET_ROWS
+p104opprof     40.380 ms   2.11% n=520 MUL_MAT:q4_K:8192x4096:n1
+p104opprof     33.614 ms   1.76% n=5720 ADD
+p104opprof     32.310 ms   1.69% n=15600 RESHAPE
+p104opprof     25.221 ms   1.32% n=3120 MUL_MAT:q8_0:32x4096:n1
+p104opprof     20.138 ms   1.05% n=4680 CPY
+p104opprof     12.080 ms   0.63% n=1560 CONCAT
+p104opprof     11.972 ms   0.63% n=715 MUL_MAT:q4_K:1024x4096:n1
+p104opprof     10.777 ms   0.56% n=1560 UNARY:SOFTPLUS
+p104opprof     10.161 ms   0.53% n=1560 SSM_CONV
+p104opprof      8.915 ms   0.47% n=2080 GLU:SWIGLU
+p104opprof      8.537 ms   0.45% n=325 MUL_MAT:q6_K:1024x4096:n1
+p104opprof      8.320 ms   0.44% n=2080 UNARY:SIGMOID
+p104opprof      7.201 ms   0.38% n=1560 UNARY:SILU
+p104opprof      6.299 ms   0.33% n=3120 FILL
+p104opprof      6.085 ms   0.32% n=1040 ROPE
+p104opprof      4.204 ms   0.22% n=520 CONT
+p104opprof      3.675 ms   0.19% n=585 SET_ROWS
+p104opprof      2.915 ms   0.15% n=1560 TRANSPOSE
+p104opprof      2.914 ms   0.15% n=1560 PERMUTE
+p104opprof      0.161 ms   0.01% n=65 DUP
+
+build: a96dce0 (8)

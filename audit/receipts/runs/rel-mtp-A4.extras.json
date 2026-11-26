@@ -1,0 +1,21 @@
+{
+ "vram_before": "7369, 741",
+ "prompt_tokens_tok": 16597,
+ "usage": {
+  "completion_tokens": 4,
+  "prompt_tokens": 16620,
+  "total_tokens": 16624,
+  "prompt_tokens_details": {
+   "cached_tokens": 0
+  }
+ },
+ "timings": {
+  "prompt_per_second": 389.75945720719056,
+  "predicted_per_second": 48.668905436316734
+ },
+ "vram_after": "7369, 741",
+ "answer": "699",
+ "json_ok": true,
+ "json_out": "{\n  \"name\": \"Ada\",\n  \"age\": 36\n}",
+ "vram_final": "7369, 741"
+}

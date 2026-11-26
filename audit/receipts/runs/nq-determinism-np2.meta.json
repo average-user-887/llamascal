@@ -1,0 +1,13 @@
+{
+  "tag": "nq-determinism-np2",
+  "image": "p104-llama:b098f6f-20261123",
+  "container": "p104-nq-determinism-np2",
+  "cmd": "llama-server -m /models/experimental/qwen35-9b/Qwen3.5-9B-Q4_K_M.gguf --host 0.0.0.0 --port 18450 -ngl 99 -fa on -c 16384 -np 2 -ctk f16 -ctv f16 -ub 512 -t 4 --metrics --jinja --no-warmup --cache-ram 1024",
+  "start": "45, 139, 405, 9.54, 0, 5, Not Active, Not Active, Not Active, Not Active",
+  "end": "58, 1860, 5005, 54.06, 0, 5, Not Active, Not Active, Not Active, Not Active",
+  "max_temp": 59,
+  "trip": null,
+  "rc": 0,
+  "secs": 211,
+  "utc": "2026-11-24T06:59:05Z"
+}

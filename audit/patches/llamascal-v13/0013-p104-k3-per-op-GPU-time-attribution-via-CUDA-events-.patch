@@ -1,0 +1,110 @@
+From b098f6f564900f6fa9798d85694b0a6eb4bc2f62 Mon Sep 17 00:00:00 2001
+From: p104-k1-builder <k1@z4-p104.local>
+Date: Mon, 23 Nov 2026 08:19:29 +0100
+Subject: [PATCH 13/17] p104 k3: per-op GPU time attribution via CUDA events
+ (compiled only with GGML_P104_OPPROF_BUILD, attribution builds)
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ ggml/src/ggml-cuda/ggml-cuda.cu | 71 +++++++++++++++++++++++++++++++++
+ 1 file changed, 71 insertions(+)
+
+diff --git a/ggml/src/ggml-cuda/ggml-cuda.cu b/ggml/src/ggml-cuda/ggml-cuda.cu
+index 3e1f167..dc73343 100644
+--- a/ggml/src/ggml-cuda/ggml-cuda.cu
++++ b/ggml/src/ggml-cuda/ggml-cuda.cu
+@@ -5310,6 +5310,71 @@ static int ggml_cuda_try_fuse(ggml_backend_cuda_context * cuda_ctx, ggml_cgraph
+     return 0;
+ }
+ 
++// p104 k3: per-op GPU time attribution, compiled in only with GGML_P104_OPPROF_BUILD; run with GGML_P104_OPPROF=1 and
++// GGML_CUDA_DISABLE_GRAPHS=1. One event per node on the main stream; the time to the next event is charged to the node
++// (fused successors included). Summary on stderr at exit.
++#ifdef GGML_P104_OPPROF_BUILD
++#include <map>
++struct p104_opprof_state {
++    std::vector<cudaEvent_t> ev;
++    std::vector<std::string> lbl;
++    size_t n = 0;
++    long maxn = 0;   // largest src1 column count of the mat-muls in this graph (tokens per ubatch)
++    std::map<std::string, std::pair<double, long>> acc;
++    long graphs = 0;
++    long skipped = 0;
++};
++static p104_opprof_state & p104_opprof() { static p104_opprof_state s; return s; }
++static bool p104_opprof_on() { static const bool on = getenv("GGML_P104_OPPROF") != nullptr; return on; }
++static void p104_opprof_report() {
++    auto & s = p104_opprof();
++    double tot = 0;
++    std::vector<std::pair<double, std::string>> v;
++    for (auto & kv : s.acc) { tot += kv.second.first; v.push_back({kv.second.first, kv.first}); }
++    std::sort(v.rbegin(), v.rend());
++    fprintf(stderr, "p104opprof graphs=%ld skipped=%ld total_ms=%.3f\n", s.graphs, s.skipped, tot);
++    for (auto & e : v) {
++        fprintf(stderr, "p104opprof %10.3f ms %6.2f%% n=%ld %s\n", e.first, 100*e.first/tot, s.acc[e.second].second, e.second.c_str());
++    }
++}
++static void p104_opprof_event(cudaStream_t st) {
++    auto & s = p104_opprof();
++    if (s.ev.size() <= s.n) { cudaEvent_t e; CUDA_CHECK(cudaEventCreate(&e)); s.ev.push_back(e); s.lbl.emplace_back(); }
++    CUDA_CHECK(cudaEventRecord(s.ev[s.n], st));
++}
++static void p104_opprof_mark(cudaStream_t st, const ggml_tensor * node) {
++    auto & s = p104_opprof();
++    p104_opprof_event(st);
++    std::string l = ggml_op_name(node->op);
++    if (node->op == GGML_OP_UNARY) { l += std::string(":") + ggml_unary_op_name(ggml_get_unary_op(node)); }
++    if (node->op == GGML_OP_GLU)   { l += std::string(":") + ggml_glu_op_name(ggml_get_glu_op(node)); }
++    if (node->src[0] && node->src[1] && (node->op == GGML_OP_MUL_MAT || node->op == GGML_OP_MUL_MAT_ID)) {
++        char b[128];
++        snprintf(b, sizeof(b), ":%s:%ldx%ld:n%ld", ggml_type_name(node->src[0]->type), (long) node->src[0]->ne[1], (long) node->src[0]->ne[0], (long) node->src[1]->ne[1]);
++        l += b;
++        s.maxn = std::max(s.maxn, (long) node->src[1]->ne[1]);
++    }
++    s.lbl[s.n++] = l;
++}
++static void p104_opprof_flush(cudaStream_t st) {
++    auto & s = p104_opprof();
++    if (s.n == 0) { return; }
++    p104_opprof_event(st);
++    CUDA_CHECK(cudaEventSynchronize(s.ev[s.n]));
++    static const long maxtok = getenv("GGML_P104_OPPROF_MAXTOK") ? atol(getenv("GGML_P104_OPPROF_MAXTOK")) : 1;
++    if (s.maxn > maxtok) { s.n = 0; s.maxn = 0; s.skipped++; return; }   // only decode-sized graphs
++    for (size_t i = 0; i < s.n; ++i) {
++        float ms;
++        CUDA_CHECK(cudaEventElapsedTime(&ms, s.ev[i], s.ev[i+1]));
++        auto & a = s.acc[s.lbl[i]];
++        a.first += ms; a.second++;
++    }
++    s.n = 0;
++    s.maxn = 0;
++    if (s.graphs++ == 0) { atexit(p104_opprof_report); }
++}
++#endif // GGML_P104_OPPROF_BUILD
++
+ static void ggml_cuda_graph_evaluate_and_capture(ggml_backend_cuda_context * cuda_ctx, ggml_cgraph * cgraph, const bool use_cuda_graph, const bool cuda_graph_update_required, const void * graph_key) {
+     bool graph_evaluated_or_captured = false;
+ 
+@@ -5417,6 +5482,9 @@ static void ggml_cuda_graph_evaluate_and_capture(ggml_backend_cuda_context * cud
+ 
+             for (int i = 0; i < cgraph->n_nodes; i++) {
+                 ggml_tensor * node = cgraph->nodes[i];
++#ifdef GGML_P104_OPPROF_BUILD
++                if (p104_opprof_on() && !use_cuda_graph) { p104_opprof_mark(cuda_ctx->stream(), node); }
++#endif
+ #ifdef USE_CUDA_GRAPH
+                 // fused nodes are skipped together, so a cut never splits a fusion
+                 // a concurrent region must join before its capture can end
+@@ -5507,6 +5575,9 @@ static void ggml_cuda_graph_evaluate_and_capture(ggml_backend_cuda_context * cud
+             }
+         }
+ 
++#ifdef GGML_P104_OPPROF_BUILD
++        if (p104_opprof_on() && !use_cuda_graph) { p104_opprof_flush(cuda_ctx->stream()); }
++#endif
+ #ifdef USE_CUDA_GRAPH
+         if (use_cuda_graph && cuda_graph_update_required) { // End CUDA graph capture
+             ggml_cuda_graph_launch_chunk(cuda_ctx, graph, n_chunks++);
+-- 
+2.43.0
+

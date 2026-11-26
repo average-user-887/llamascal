@@ -1,0 +1,51 @@
+ggml_cuda_init: found 1 CUDA devices (Total VRAM: 5038 MiB):
+  Device 0: Quadro P2000, compute capability 6.1, VMM: yes, VRAM: 5038 MiB
+Testing 2 devices
+
+Backend 1/2: CUDA0
+  Device description: Quadro P2000
+  Device memory: 5038 MB (4978 MB free)
+
+  GATED_DELTA_NET(type=f32,head_count=32,head_size=128,n_seq_tokens=1,n_seqs=1,v_repeat=1,permuted=0,kda=0,K=1,correlated=0,padded_v=0,padded_q=0,permuted_k=0):               24198 runs -    53.06 us/run -     4160 kB/run - [1;34m  74.77 GB/s[0m
+  GATED_DELTA_NET(type=f32,head_count=16,head_size=64,n_seq_tokens=1,n_seqs=1,v_repeat=1,permuted=0,kda=0,K=1,correlated=0,padded_v=0,padded_q=0,permuted_k=0):               196560 runs -     5.12 us/run -      528 kB/run - [1;34m  98.44 GB/s[0m
+  GATED_DELTA_NET(type=f32,head_count=32,head_size=128,n_seq_tokens=1,n_seqs=1,v_repeat=1,permuted=0,kda=1,K=1,correlated=0,padded_v=0,padded_q=0,permuted_k=0):               24105 runs -    49.05 us/run -     4176 kB/run - [1;34m  81.20 GB/s[0m
+  GATED_DELTA_NET(type=f32,head_count=32,head_size=128,n_seq_tokens=64,n_seqs=1,v_repeat=1,permuted=0,kda=0,K=1,correlated=0,padded_v=0,padded_q=0,permuted_k=0):               4089 runs -   553.47 us/run -     8208 kB/run - [1;34m  14.14 GB/s[0m
+  GATED_DELTA_NET(type=f32,head_count=32,head_size=128,n_seq_tokens=256,n_seqs=1,v_repeat=1,permuted=0,kda=0,K=1,correlated=0,padded_v=0,padded_q=0,permuted_k=0):              1634 runs -  2154.45 us/run -    20544 kB/run - [1;34m   9.10 GB/s[0m
+  GATED_DELTA_NET(type=f32,head_count=32,head_size=128,n_seq_tokens=512,n_seqs=1,v_repeat=1,permuted=0,kda=0,K=1,correlated=0,padded_v=0,padded_q=0,permuted_k=0):               908 runs -  4312.37 us/run -    36992 kB/run - [1;34m   8.19 GB/s[0m
+  GATED_DELTA_NET(type=f32,head_count=32,head_size=128,n_seq_tokens=1024,n_seqs=1,v_repeat=1,permuted=0,kda=0,K=1,correlated=0,padded_v=0,padded_q=0,permuted_k=0):                      481 runs -  8842.35 us/run -    69888 kB/run - [1;34m   7.55 GB/s[0m
+  GATED_DELTA_NET(type=f32,head_count=16,head_size=128,n_seq_tokens=64,n_seqs=1,v_repeat=1,permuted=0,kda=0,K=1,correlated=0,padded_v=0,padded_q=0,permuted_k=0):               8177 runs -   277.19 us/run -     4104 kB/run - [1;34m  14.12 GB/s[0m
+  GATED_DELTA_NET(type=f32,head_count=16,head_size=128,n_seq_tokens=128,n_seqs=1,v_repeat=1,permuted=0,kda=0,K=1,correlated=0,padded_v=0,padded_q=0,permuted_k=0):              5448 runs -   540.57 us/run -     6160 kB/run - [1;34m  10.87 GB/s[0m
+  GATED_DELTA_NET(type=f32,head_count=16,head_size=128,n_seq_tokens=256,n_seqs=1,v_repeat=1,permuted=0,kda=0,K=1,correlated=0,padded_v=0,padded_q=0,permuted_k=0):              3267 runs -  1063.47 us/run -    10272 kB/run - [1;34m   9.21 GB/s[0m
+  GATED_DELTA_NET(type=f32,head_count=16,head_size=128,n_seq_tokens=512,n_seqs=1,v_repeat=1,permuted=0,kda=0,K=1,correlated=0,padded_v=0,padded_q=0,permuted_k=0):              1815 runs -  2098.91 us/run -    18496 kB/run - [1;34m   8.41 GB/s[0m
+  GATED_DELTA_NET(type=f32,head_count=16,head_size=128,n_seq_tokens=1024,n_seqs=1,v_repeat=1,permuted=0,kda=0,K=1,correlated=0,padded_v=0,padded_q=0,permuted_k=0):                      961 runs -  4183.77 us/run -    34944 kB/run - [1;34m   7.97 GB/s[0m
+  GATED_DELTA_NET(type=f32,head_count=16,head_size=128,n_seq_tokens=2048,n_seqs=1,v_repeat=1,permuted=0,kda=0,K=1,correlated=0,padded_v=0,padded_q=0,permuted_k=0):                      495 runs -  8430.87 us/run -    67840 kB/run - [1;34m   7.69 GB/s[0m
+  GATED_DELTA_NET(type=f32,head_count=16,head_size=128,n_seq_tokens=4096,n_seqs=1,v_repeat=1,permuted=0,kda=0,K=1,correlated=0,padded_v=0,padded_q=0,permuted_k=0):                      252 runs - 17451.04 us/run -   133632 kB/run - [1;34m   7.33 GB/s[0m
+  GATED_DELTA_NET(type=f32,head_count=4,head_size=128,n_seq_tokens=64,n_seqs=1,v_repeat=1,permuted=0,kda=0,K=1,correlated=0,padded_v=0,padded_q=0,permuted_k=0):               24570 runs -    51.61 us/run -     1026 kB/run - [1;34m  18.96 GB/s[0m
+  GATED_DELTA_NET(type=f32,head_count=4,head_size=128,n_seq_tokens=256,n_seqs=1,v_repeat=1,permuted=0,kda=0,K=1,correlated=0,padded_v=0,padded_q=0,permuted_k=0):               8190 runs -   226.53 us/run -     2568 kB/run - [1;34m  10.81 GB/s[0m
+  GATED_DELTA_NET(type=f32,head_count=4,head_size=128,n_seq_tokens=512,n_seqs=1,v_repeat=1,permuted=0,kda=0,K=1,correlated=0,padded_v=0,padded_q=0,permuted_k=0):               7257 runs -   448.10 us/run -     4624 kB/run - [1;34m   9.84 GB/s[0m
+  GATED_DELTA_NET(type=f32,head_count=4,head_size=128,n_seq_tokens=1024,n_seqs=1,v_repeat=1,permuted=0,kda=0,K=1,correlated=0,padded_v=0,padded_q=0,permuted_k=0):              3841 runs -   882.49 us/run -     8736 kB/run - [1;34m   9.44 GB/s[0m
+  GATED_DELTA_NET(type=f32,head_count=32,head_size=128,n_seq_tokens=64,n_seqs=1,v_repeat=1,permuted=0,kda=1,K=1,correlated=0,padded_v=0,padded_q=0,permuted_k=0):               3638 runs -   784.38 us/run -     9224 kB/run - [1;34m  11.22 GB/s[0m
+  GATED_DELTA_NET(type=f32,head_count=4,head_size=128,n_seq_tokens=64,n_seqs=1,v_repeat=1,permuted=0,kda=1,K=1,correlated=0,padded_v=0,padded_q=0,permuted_k=0):               16380 runs -    74.10 us/run -     1153 kB/run - [1;34m  14.84 GB/s[0m
+  GATED_DELTA_NET(type=f32,head_count=16,head_size=128,n_seq_tokens=256,n_seqs=1,v_repeat=1,permuted=0,kda=1,K=1,correlated=0,padded_v=0,padded_q=0,permuted_k=0):              2728 runs -  1406.38 us/run -    12304 kB/run - [1;34m   8.35 GB/s[0m
+  GATED_DELTA_NET(type=f32,head_count=4,head_size=128,n_seq_tokens=1024,n_seqs=1,v_repeat=1,permuted=0,kda=1,K=1,correlated=0,padded_v=0,padded_q=0,permuted_k=0):              3117 runs -  1280.19 us/run -    10768 kB/run - [1;34m   8.02 GB/s[0m
+  GATED_DELTA_NET(type=f32,head_count=16,head_size=128,n_seq_tokens=2048,n_seqs=1,v_repeat=2,permuted=0,kda=0,K=1,correlated=0,padded_v=0,padded_q=0,permuted_k=0):                      327 runs - 16056.14 us/run -   102912 kB/run - [1;34m   6.12 GB/s[0m
+  GATED_DELTA_NET(type=f32,head_count=16,head_size=128,n_seq_tokens=2048,n_seqs=1,v_repeat=3,permuted=0,kda=0,K=1,correlated=0,padded_v=0,padded_q=0,permuted_k=0):                      244 runs - 23710.85 us/run -   137984 kB/run - [1;34m   5.56 GB/s[0m
+  GATED_DELTA_NET(type=f32,head_count=16,head_size=128,n_seq_tokens=4096,n_seqs=1,v_repeat=2,permuted=0,kda=0,K=1,correlated=0,padded_v=0,padded_q=0,permuted_k=0):                      167 runs - 33595.75 us/run -   201728 kB/run - [1;34m   5.75 GB/s[0m
+  GATED_DELTA_NET(type=f32,head_count=16,head_size=128,n_seq_tokens=4096,n_seqs=1,v_repeat=3,permuted=0,kda=0,K=1,correlated=0,padded_v=0,padded_q=0,permuted_k=0):                      125 runs - 49210.02 us/run -   269824 kB/run - [1;34m   5.25 GB/s[0m
+  GATED_DELTA_NET(type=f32,head_count=16,head_size=128,n_seq_tokens=8192,n_seqs=1,v_repeat=2,permuted=0,kda=0,K=1,correlated=0,padded_v=0,padded_q=0,permuted_k=0):                       85 runs - 72292.12 us/run -   399360 kB/run - [1;34m   5.31 GB/s[0m
+  GATED_DELTA_NET(type=f32,head_count=16,head_size=128,n_seq_tokens=8192,n_seqs=1,v_repeat=3,permuted=0,kda=0,K=1,correlated=0,padded_v=0,padded_q=0,permuted_k=0):                       63 runs - 104826.48 us/run -   533504 kB/run - [1;34m   4.89 GB/s[0m
+  GATED_DELTA_NET(type=f32,head_count=16,head_size=128,n_seq_tokens=16384,n_seqs=1,v_repeat=2,permuted=0,kda=0,K=1,correlated=0,padded_v=0,padded_q=0,permuted_k=0):                      43 runs - 145795.86 us/run -   794624 kB/run - [1;34m   5.28 GB/s[0m
+  GATED_DELTA_NET(type=f32,head_count=16,head_size=128,n_seq_tokens=16384,n_seqs=1,v_repeat=3,permuted=0,kda=0,K=1,correlated=0,padded_v=0,padded_q=0,permuted_k=0):                      32 runs - 212362.53 us/run -  1060864 kB/run - [1;34m   4.84 GB/s[0m
+  GATED_DELTA_NET(type=f32,head_count=16,head_size=128,n_seq_tokens=32768,n_seqs=1,v_repeat=2,permuted=0,kda=0,K=1,correlated=0,padded_v=0,padded_q=0,permuted_k=0):                      22 runs - 294338.05 us/run -  1585152 kB/run - [1;34m   5.29 GB/s[0m
+  GATED_DELTA_NET(type=f32,head_count=16,head_size=128,n_seq_tokens=32768,n_seqs=1,v_repeat=3,permuted=0,kda=0,K=1,correlated=0,padded_v=0,padded_q=0,permuted_k=0):                      16 runs - 428200.31 us/run -  2115584 kB/run - [1;34m   4.86 GB/s[0m
+  GATED_DELTA_NET(type=f32,head_count=4,head_size=128,n_seq_tokens=2048,n_seqs=1,v_repeat=1,permuted=0,kda=0,K=1,correlated=0,padded_v=0,padded_q=0,permuted_k=0):              1979 runs -  1800.69 us/run -    16960 kB/run - [1;34m   8.99 GB/s[0m
+  GATED_DELTA_NET(type=f32,head_count=4,head_size=128,n_seq_tokens=4096,n_seqs=1,v_repeat=1,permuted=0,kda=0,K=1,correlated=0,padded_v=0,padded_q=0,permuted_k=0):              1005 runs -  3584.38 us/run -    33408 kB/run - [1;34m   8.90 GB/s[0m
+  GATED_DELTA_NET(type=f32,head_count=4,head_size=128,n_seq_tokens=8192,n_seqs=1,v_repeat=1,permuted=0,kda=0,K=1,correlated=0,padded_v=0,padded_q=0,permuted_k=0):               507 runs -  7166.54 us/run -    66304 kB/run - [1;34m   8.84 GB/s[0m
+  GATED_DELTA_NET(type=f32,head_count=20,head_size=128,n_seq_tokens=1536,n_seqs=1,v_repeat=1,permuted=0,kda=0,K=1,correlated=0,padded_v=0,padded_q=0,permuted_k=0):                      523 runs -  7382.45 us/run -    64240 kB/run - [1;34m   8.31 GB/s[0m
+  GATED_DELTA_NET(type=f32,head_count=20,head_size=128,n_seq_tokens=2048,n_seqs=1,v_repeat=1,permuted=0,kda=0,K=1,correlated=0,padded_v=0,padded_q=0,permuted_k=0):                      396 runs -  9812.40 us/run -    84800 kB/run - [1;34m   8.26 GB/s[0m
+  GATED_DELTA_NET(type=f32,head_count=16,head_size=128,n_seq_tokens=2048,n_seqs=1,v_repeat=3,permuted=0,kda=0,K=5,correlated=0,padded_v=0,padded_q=0,permuted_k=0):                      224 runs - 24403.12 us/run -   150272 kB/run - [1;34m   5.88 GB/s[0m
+  Backend CUDA0: [1;32mOK[0m
+Backend 2/2: CPU
+  Skipping
+2/2 backends passed
+[1;32mOK[0m

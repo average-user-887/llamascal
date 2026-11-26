@@ -1,0 +1,21 @@
+ggml_cuda_init: found 1 CUDA devices (Total VRAM: 8109 MiB):
+  Device 0: NVIDIA P104-100, compute capability 6.1, VMM: yes, VRAM: 8109 MiB
+Testing 2 devices
+
+Backend 1/2: CUDA0
+  Device description: NVIDIA P104-100
+  Device memory: 8109 MB (8023 MB free)
+
+  MUL_MAT_ID(type_a=q4_K,type_b=f32,n_mats=128,n_used=8,b=0,m=768,n=1,k=2048,m_v=0,ids_offset=0,skip=0):               31792 runs -    33.22 us/run -  25.17 MFLOP/run - [1;34m757.62 GFLOPS[0m
+  MUL_MAT_ID(type_a=q6_K,type_b=f32,n_mats=128,n_used=8,b=0,m=768,n=1,k=2048,m_v=0,ids_offset=0,skip=0):               19870 runs -    62.00 us/run -  25.17 MFLOP/run - [1;34m405.92 GFLOPS[0m
+  MUL_MAT_ID(type_a=q4_K,type_b=f32,n_mats=128,n_used=8,b=0,m=768,n=512,k=2048,m_v=0,ids_offset=0,skip=0):               352 runs -  2886.75 us/run -  12.88 GFLOP/run - [1;34m  4.46 TFLOPS[0m
+  MUL_MAT_ID(type_a=q6_K,type_b=f32,n_mats=128,n_used=8,b=0,m=768,n=512,k=2048,m_v=0,ids_offset=0,skip=0):               304 runs -  3315.80 us/run -  12.88 GFLOP/run - [1;34m  3.89 TFLOPS[0m
+  MUL_MAT_ID(type_a=q4_K,type_b=f32,n_mats=32,n_used=4,b=0,m=1792,n=1,k=2048,m_v=0,ids_offset=0,skip=0):               27248 runs -    37.56 us/run -  29.36 MFLOP/run - [1;34m781.60 GFLOPS[0m
+  MUL_MAT_ID(type_a=q6_K,type_b=f32,n_mats=32,n_used=4,b=0,m=1792,n=1,k=2048,m_v=0,ids_offset=0,skip=0):               17030 runs -    71.06 us/run -  29.36 MFLOP/run - [1;34m413.16 GFLOPS[0m
+  MUL_MAT_ID(type_a=q4_K,type_b=f32,n_mats=32,n_used=4,b=0,m=1792,n=512,k=2048,m_v=0,ids_offset=0,skip=0):               413 runs -  2428.40 us/run -  15.03 GFLOP/run - [1;34m  6.19 TFLOPS[0m
+  MUL_MAT_ID(type_a=q6_K,type_b=f32,n_mats=32,n_used=4,b=0,m=1792,n=512,k=2048,m_v=0,ids_offset=0,skip=0):               371 runs -  2743.13 us/run -  15.03 GFLOP/run - [1;34m  5.48 TFLOPS[0m
+  Backend CUDA0: [1;32mOK[0m
+Backend 2/2: CPU
+  Skipping
+2/2 backends passed
+[1;32mOK[0m

@@ -1,0 +1,55 @@
+ggml_cuda_init: found 1 CUDA devices (Total VRAM: 5038 MiB):
+  Device 0: Quadro P2000, compute capability 6.1, VMM: yes, VRAM: 5038 MiB
+Testing 2 devices
+
+Backend 1/2: CUDA0
+  Device description: Quadro P2000
+  Device memory: 5038 MB (4978 MB free)
+
+  MUL_MAT(type_a=q4_K,type_b=f32,m=4096,n=1,k=14336,bs=[1,1],nr=[1,1],per=[0,1,2,3],k_v=0,o=1,src_overlap=0,m_v=0,pad=0,offset_a=0):                    4260 runs -   270.07 us/run - 117.44 MFLOP/run - [1;34m434.86 GFLOPS[0m
+  MUL_MAT(type_a=q5_K,type_b=f32,m=4096,n=1,k=14336,bs=[1,1],nr=[1,1],per=[0,1,2,3],k_v=0,o=1,src_overlap=0,m_v=0,pad=0,offset_a=0):                    3408 runs -   329.60 us/run - 117.44 MFLOP/run - [1;34m356.31 GFLOPS[0m
+  MUL_MAT(type_a=q6_K,type_b=f32,m=4096,n=1,k=14336,bs=[1,1],nr=[1,1],per=[0,1,2,3],k_v=0,o=1,src_overlap=0,m_v=0,pad=0,offset_a=0):                    2556 runs -   426.53 us/run - 117.44 MFLOP/run - [1;34m275.34 GFLOPS[0m
+  MUL_MAT(type_a=q4_K,type_b=f32,m=4096,n=2,k=14336,bs=[1,1],nr=[1,1],per=[0,1,2,3],k_v=0,o=1,src_overlap=0,m_v=0,pad=0,offset_a=0):                    3408 runs -   319.32 us/run - 234.88 MFLOP/run - [1;34m735.57 GFLOPS[0m
+  MUL_MAT(type_a=q5_K,type_b=f32,m=4096,n=2,k=14336,bs=[1,1],nr=[1,1],per=[0,1,2,3],k_v=0,o=1,src_overlap=0,m_v=0,pad=0,offset_a=0):                    2982 runs -   383.56 us/run - 234.88 MFLOP/run - [1;34m612.37 GFLOPS[0m
+  MUL_MAT(type_a=q6_K,type_b=f32,m=4096,n=2,k=14336,bs=[1,1],nr=[1,1],per=[0,1,2,3],k_v=0,o=1,src_overlap=0,m_v=0,pad=0,offset_a=0):                    2556 runs -   452.89 us/run - 234.88 MFLOP/run - [1;34m518.63 GFLOPS[0m
+  MUL_MAT(type_a=q4_K,type_b=f32,m=4096,n=3,k=14336,bs=[1,1],nr=[1,1],per=[0,1,2,3],k_v=0,o=1,src_overlap=0,m_v=0,pad=0,offset_a=0):                    2840 runs -   380.89 us/run - 352.32 MFLOP/run - [1;34m924.99 GFLOPS[0m
+  MUL_MAT(type_a=q5_K,type_b=f32,m=4096,n=3,k=14336,bs=[1,1],nr=[1,1],per=[0,1,2,3],k_v=0,o=1,src_overlap=0,m_v=0,pad=0,offset_a=0):                    1988 runs -   523.57 us/run - 352.32 MFLOP/run - [1;34m672.92 GFLOPS[0m
+  MUL_MAT(type_a=q6_K,type_b=f32,m=4096,n=3,k=14336,bs=[1,1],nr=[1,1],per=[0,1,2,3],k_v=0,o=1,src_overlap=0,m_v=0,pad=0,offset_a=0):                    2272 runs -   491.04 us/run - 352.32 MFLOP/run - [1;34m717.50 GFLOPS[0m
+  MUL_MAT(type_a=q4_K,type_b=f32,m=4096,n=1,k=14336,bs=[1,1],nr=[1,1],per=[0,1,2,3],k_v=0,o=1,src_overlap=0,m_v=0,pad=0,offset_a=0):                    4260 runs -   268.11 us/run - 117.44 MFLOP/run - [1;34m438.03 GFLOPS[0m
+  MUL_MAT(type_a=q4_K,type_b=f32,m=4096,n=2,k=14336,bs=[1,1],nr=[1,1],per=[0,1,2,3],k_v=0,o=1,src_overlap=0,m_v=0,pad=0,offset_a=0):                    3408 runs -   319.76 us/run - 234.88 MFLOP/run - [1;34m734.54 GFLOPS[0m
+  MUL_MAT(type_a=q4_K,type_b=f32,m=4096,n=3,k=14336,bs=[1,1],nr=[1,1],per=[0,1,2,3],k_v=0,o=1,src_overlap=0,m_v=0,pad=0,offset_a=0):                    2840 runs -   379.30 us/run - 352.32 MFLOP/run - [1;34m928.87 GFLOPS[0m
+  MUL_MAT(type_a=q4_K,type_b=f32,m=12288,n=1,k=4096,bs=[1,1],nr=[1,1],per=[0,1,2,3],k_v=0,o=1,src_overlap=0,m_v=0,pad=0,offset_a=0):                    4970 runs -   228.04 us/run - 100.66 MFLOP/run - [1;34m441.43 GFLOPS[0m
+  MUL_MAT(type_a=q4_K,type_b=f32,m=12288,n=2,k=4096,bs=[1,1],nr=[1,1],per=[0,1,2,3],k_v=0,o=1,src_overlap=0,m_v=0,pad=0,offset_a=0):                    3479 runs -   296.88 us/run - 201.33 MFLOP/run - [1;34m678.13 GFLOPS[0m
+  MUL_MAT(type_a=q4_K,type_b=f32,m=12288,n=3,k=4096,bs=[1,1],nr=[1,1],per=[0,1,2,3],k_v=0,o=1,src_overlap=0,m_v=0,pad=0,offset_a=0):                    3320 runs -   330.84 us/run - 301.99 MFLOP/run - [1;34m912.79 GFLOPS[0m
+  MUL_MAT(type_a=q4_K,type_b=f32,m=4096,n=1,k=4096,bs=[1,1],nr=[1,1],per=[0,1,2,3],k_v=0,o=1,src_overlap=0,m_v=0,pad=0,offset_a=0):                    14905 runs -    79.70 us/run -  33.55 MFLOP/run - [1;34m420.99 GFLOPS[0m
+  MUL_MAT(type_a=q4_K,type_b=f32,m=4096,n=2,k=4096,bs=[1,1],nr=[1,1],per=[0,1,2,3],k_v=0,o=1,src_overlap=0,m_v=0,pad=0,offset_a=0):                    10437 runs -   104.18 us/run -  67.11 MFLOP/run - [1;34m644.13 GFLOPS[0m
+  MUL_MAT(type_a=q4_K,type_b=f32,m=4096,n=3,k=4096,bs=[1,1],nr=[1,1],per=[0,1,2,3],k_v=0,o=1,src_overlap=0,m_v=0,pad=0,offset_a=0):                     8946 runs -   117.45 us/run - 100.66 MFLOP/run - [1;34m857.08 GFLOPS[0m
+  MUL_MAT(type_a=q4_K,type_b=f32,m=8192,n=1,k=4096,bs=[1,1],nr=[1,1],per=[0,1,2,3],k_v=0,o=1,src_overlap=0,m_v=0,pad=0,offset_a=0):                     7455 runs -   153.84 us/run -  67.11 MFLOP/run - [1;34m436.24 GFLOPS[0m
+  MUL_MAT(type_a=q4_K,type_b=f32,m=8192,n=2,k=4096,bs=[1,1],nr=[1,1],per=[0,1,2,3],k_v=0,o=1,src_overlap=0,m_v=0,pad=0,offset_a=0):                     5222 runs -   201.17 us/run - 134.22 MFLOP/run - [1;34m667.19 GFLOPS[0m
+  MUL_MAT(type_a=q4_K,type_b=f32,m=8192,n=3,k=4096,bs=[1,1],nr=[1,1],per=[0,1,2,3],k_v=0,o=1,src_overlap=0,m_v=0,pad=0,offset_a=0):                     4473 runs -   224.15 us/run - 201.33 MFLOP/run - [1;34m898.18 GFLOPS[0m
+  MUL_MAT(type_a=q5_K,type_b=f32,m=12288,n=1,k=4096,bs=[1,1],nr=[1,1],per=[0,1,2,3],k_v=0,o=1,src_overlap=0,m_v=0,pad=0,offset_a=0):                    3976 runs -   278.56 us/run - 100.66 MFLOP/run - [1;34m361.37 GFLOPS[0m
+  MUL_MAT(type_a=q5_K,type_b=f32,m=12288,n=2,k=4096,bs=[1,1],nr=[1,1],per=[0,1,2,3],k_v=0,o=1,src_overlap=0,m_v=0,pad=0,offset_a=0):                    3479 runs -   329.79 us/run - 201.33 MFLOP/run - [1;34m610.46 GFLOPS[0m
+  MUL_MAT(type_a=q5_K,type_b=f32,m=12288,n=3,k=4096,bs=[1,1],nr=[1,1],per=[0,1,2,3],k_v=0,o=1,src_overlap=0,m_v=0,pad=0,offset_a=0):                    2656 runs -   408.74 us/run - 301.99 MFLOP/run - [1;34m738.84 GFLOPS[0m
+  MUL_MAT(type_a=q5_K,type_b=f32,m=4096,n=1,k=4096,bs=[1,1],nr=[1,1],per=[0,1,2,3],k_v=0,o=1,src_overlap=0,m_v=0,pad=0,offset_a=0):                    11924 runs -    96.90 us/run -  33.55 MFLOP/run - [1;34m346.26 GFLOPS[0m
+  MUL_MAT(type_a=q5_K,type_b=f32,m=4096,n=2,k=4096,bs=[1,1],nr=[1,1],per=[0,1,2,3],k_v=0,o=1,src_overlap=0,m_v=0,pad=0,offset_a=0):                     8946 runs -   114.15 us/run -  67.11 MFLOP/run - [1;34m587.88 GFLOPS[0m
+  MUL_MAT(type_a=q5_K,type_b=f32,m=4096,n=3,k=4096,bs=[1,1],nr=[1,1],per=[0,1,2,3],k_v=0,o=1,src_overlap=0,m_v=0,pad=0,offset_a=0):                     7952 runs -   132.64 us/run - 100.66 MFLOP/run - [1;34m758.92 GFLOPS[0m
+  MUL_MAT(type_a=q5_K,type_b=f32,m=8192,n=1,k=4096,bs=[1,1],nr=[1,1],per=[0,1,2,3],k_v=0,o=1,src_overlap=0,m_v=0,pad=0,offset_a=0):                     5964 runs -   188.02 us/run -  67.11 MFLOP/run - [1;34m356.92 GFLOPS[0m
+  MUL_MAT(type_a=q5_K,type_b=f32,m=8192,n=2,k=4096,bs=[1,1],nr=[1,1],per=[0,1,2,3],k_v=0,o=1,src_overlap=0,m_v=0,pad=0,offset_a=0):                     5222 runs -   222.18 us/run - 134.22 MFLOP/run - [1;34m604.11 GFLOPS[0m
+  MUL_MAT(type_a=q5_K,type_b=f32,m=8192,n=3,k=4096,bs=[1,1],nr=[1,1],per=[0,1,2,3],k_v=0,o=1,src_overlap=0,m_v=0,pad=0,offset_a=0):                     3976 runs -   255.65 us/run - 201.33 MFLOP/run - [1;34m787.51 GFLOPS[0m
+  MUL_MAT(type_a=q6_K,type_b=f32,m=12288,n=1,k=4096,bs=[1,1],nr=[1,1],per=[0,1,2,3],k_v=0,o=1,src_overlap=0,m_v=0,pad=0,offset_a=0):                    2982 runs -   356.91 us/run - 100.66 MFLOP/run - [1;34m282.04 GFLOPS[0m
+  MUL_MAT(type_a=q6_K,type_b=f32,m=12288,n=2,k=4096,bs=[1,1],nr=[1,1],per=[0,1,2,3],k_v=0,o=1,src_overlap=0,m_v=0,pad=0,offset_a=0):                    2485 runs -   418.06 us/run - 201.33 MFLOP/run - [1;34m481.58 GFLOPS[0m
+  MUL_MAT(type_a=q6_K,type_b=f32,m=12288,n=3,k=4096,bs=[1,1],nr=[1,1],per=[0,1,2,3],k_v=0,o=1,src_overlap=0,m_v=0,pad=0,offset_a=0):                    2324 runs -   498.47 us/run - 301.99 MFLOP/run - [1;34m605.83 GFLOPS[0m
+  MUL_MAT(type_a=q6_K,type_b=f32,m=4096,n=1,k=4096,bs=[1,1],nr=[1,1],per=[0,1,2,3],k_v=0,o=1,src_overlap=0,m_v=0,pad=0,offset_a=0):                     8943 runs -   122.91 us/run -  33.55 MFLOP/run - [1;34m273.00 GFLOPS[0m
+  MUL_MAT(type_a=q6_K,type_b=f32,m=4096,n=2,k=4096,bs=[1,1],nr=[1,1],per=[0,1,2,3],k_v=0,o=1,src_overlap=0,m_v=0,pad=0,offset_a=0):                     7455 runs -   143.75 us/run -  67.11 MFLOP/run - [1;34m466.85 GFLOPS[0m
+  MUL_MAT(type_a=q6_K,type_b=f32,m=4096,n=3,k=4096,bs=[1,1],nr=[1,1],per=[0,1,2,3],k_v=0,o=1,src_overlap=0,m_v=0,pad=0,offset_a=0):                     5964 runs -   170.31 us/run - 100.66 MFLOP/run - [1;34m591.06 GFLOPS[0m
+  MUL_MAT(type_a=q6_K,type_b=f32,m=8192,n=1,k=4096,bs=[1,1],nr=[1,1],per=[0,1,2,3],k_v=0,o=1,src_overlap=0,m_v=0,pad=0,offset_a=0):                     4473 runs -   240.40 us/run -  67.11 MFLOP/run - [1;34m279.16 GFLOPS[0m
+  MUL_MAT(type_a=q6_K,type_b=f32,m=8192,n=2,k=4096,bs=[1,1],nr=[1,1],per=[0,1,2,3],k_v=0,o=1,src_overlap=0,m_v=0,pad=0,offset_a=0):                     3730 runs -   281.17 us/run - 134.22 MFLOP/run - [1;34m477.36 GFLOPS[0m
+  MUL_MAT(type_a=q6_K,type_b=f32,m=8192,n=3,k=4096,bs=[1,1],nr=[1,1],per=[0,1,2,3],k_v=0,o=1,src_overlap=0,m_v=0,pad=0,offset_a=0):                     3479 runs -   335.18 us/run - 201.33 MFLOP/run - [1;34m600.66 GFLOPS[0m
+  MUL_MAT(type_a=q4_K,type_b=f32,m=4096,n=1,k=4096,bs=[1,1],nr=[1,1],per=[0,1,2,3],k_v=0,o=1,src_overlap=0,m_v=0,pad=0,offset_a=0):                    14905 runs -    79.67 us/run -  33.55 MFLOP/run - [1;34m421.17 GFLOPS[0m
+  MUL_MAT(type_a=q4_K,type_b=f32,m=4096,n=2,k=4096,bs=[1,1],nr=[1,1],per=[0,1,2,3],k_v=0,o=1,src_overlap=0,m_v=0,pad=0,offset_a=0):                    10437 runs -   103.63 us/run -  67.11 MFLOP/run - [1;34m647.57 GFLOPS[0m
+  MUL_MAT(type_a=q4_K,type_b=f32,m=4096,n=3,k=4096,bs=[1,1],nr=[1,1],per=[0,1,2,3],k_v=0,o=1,src_overlap=0,m_v=0,pad=0,offset_a=0):                     8946 runs -   117.89 us/run - 100.66 MFLOP/run - [1;34m853.91 GFLOPS[0m
+  Backend CUDA0: [1;32mOK[0m
+Backend 2/2: CPU
+  Skipping
+2/2 backends passed
+[1;32mOK[0m

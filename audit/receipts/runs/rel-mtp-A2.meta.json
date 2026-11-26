@@ -1,0 +1,18 @@
+{
+  "tag": "rel-mtp-A2",
+  "image": "p104-llama:b098f6f-20261123",
+  "container": "p104-rel-mtp-A2",
+  "cmd": "llama-server -m /models/experimental/qwen35-9b-mtp/Qwen3.5-9B-MTP-Q4_K_M.gguf --alias x -c 49152 -np 1 -ngl 99 -fa on -ctk f16 -ctv f16 -ub 512 -t 4 --cache-ram 1024 --jinja --metrics --no-warmup --spec-type draft-mtp --spec-draft-n-max 2 --host 0.0.0.0 --port 18400",
+  "start": "50, 139, 405, 9.78, 0, 5, Not Active, Not Active, Not Active, Not Active",
+  "end": "57, 1860, 5005, 54.28, 0, 5, Not Active, Not Active, Not Active, Not Active",
+  "max_temp": 60,
+  "trip": null,
+  "rc": 0,
+  "secs": 195,
+  "utc": "2026-11-26T03:42:59Z",
+  "trip_c": 88,
+  "warn_c": 83,
+  "cool_c": 50,
+  "warn": false,
+  "start_temp": 50
+}

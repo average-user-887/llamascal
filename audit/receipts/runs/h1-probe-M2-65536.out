@@ -1,0 +1,42 @@
+
+==========
+== CUDA ==
+==========
+
+CUDA Version 12.9.1
+
+Container image Copyright (c) 2016-2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+
+This container image and its contents are governed by the NVIDIA Deep Learning Container License.
+By pulling and using the container, you accept the terms and conditions of this license:
+https://developer.nvidia.com/ngc/nvidia-deep-learning-container-license
+
+A copy of this license is made available in this container at /NGC-DL-CONTAINER-LICENSE for your convenience.
+
+0.00.050.081 I srv  llama_server: initializing ...
+0.00.050.104 I cmn  common_param: common_params_print_info: verbosity = 3 (adjust with the `-lv N` CLI arg)
+0.00.052.380 W srv  server_setup: security: no API key is set and CORS allows all origins (see https://github.com/ggml-org/llama.cpp/pull/25655)
+0.00.055.115 I srv    load_model: loading model '/models/experimental/qwen35-9b-mtp/Qwen3.5-9B-MTP-Q4_K_M.gguf'
+0.01.077.723 W common_fit_params: failed to fit params to free device memory: n_gpu_layers already set by user to 99, abort
+0.41.929.299 I cmn          init: llama threadpool init, n_threads = 4
+0.41.933.373 I common_speculative_init_result: creating MTP draft context against the target model '/models/experimental/qwen35-9b-mtp/Qwen3.5-9B-MTP-Q4_K_M.gguf'
+0.41.982.288 I srv    load_model: initializing, n_slots = 1, n_ctx_slot = 65536, kv_unified = 'false'
+0.42.222.129 I srv  server_run_i: model loaded
+0.42.224.777 I srv  server_on_li: listening on http://0.0.0.0:18321
+0.42.950.341 I slot       select: id  0 | task -1 | selected slot by LRU, n_tokens = 0, t_last = -1
+0.42.950.716 I slot launch_slot_: id  0 | task 0 | processing task, is_child = 0
+0.47.300.760 I slot print_timing: id  0 | task 0 | prompt processing, n_tokens =   2048, progress = 0.19, t =   3.25 s / 630.95 tokens per second
+0.51.706.123 I slot print_timing: id  0 | task 0 | prompt processing, n_tokens =   4096, progress = 0.37, t =   7.56 s / 541.55 tokens per second
+0.56.411.906 I slot print_timing: id  0 | task 0 | prompt processing, n_tokens =   6144, progress = 0.56, t =  12.17 s / 504.80 tokens per second
+1.01.412.847 I slot print_timing: id  0 | task 0 | prompt processing, n_tokens =   8192, progress = 0.74, t =  17.08 s / 479.57 tokens per second
+1.06.701.032 I slot print_timing: id  0 | task 0 | prompt processing, n_tokens =  10240, progress = 0.93, t =  22.28 s / 459.57 tokens per second
+1.07.541.435 I slot print_timing: id  0 | task 0 | prompt processing, n_tokens =  10499, progress = 0.95, t =  23.86 s / 440.01 tokens per second
+1.08.953.980 I slot print_timing: id  0 | task 0 | prompt processing, n_tokens =  11011, progress = 1.00, t =  24.76 s / 444.74 tokens per second
+1.12.175.660 I slot print_timing: id  0 | task 0 | n_gen =    120, tg =  39.60 t/s, tg_3s =  39.93 t/s
+1.14.747.753 I slot print_timing: id  0 | task 0 | prompt eval time =   26219.71 ms / 11015 tokens (    2.38 ms per token,   420.10 tokens per second)
+1.14.747.759 I slot print_timing: id  0 | task 0 |        eval time =    5577.26 ms /   256 tokens (   21.87 ms per token,    45.72 tokens per second)
+1.14.747.759 I slot print_timing: id  0 | task 0 |       total time =   31796.98 ms / 11271 tokens
+1.14.747.765 I slot print_timing: id  0 | task 0 |    graphs reused =         91
+1.14.747.765 I slot print_timing: id  0 | task 0 |   graph reallocs =          0    /     0        (same size) / (changed size)
+1.14.747.785 I slot print_timing: id  0 | task 0 | draft acceptance = 0.87097 (  162 accepted /   186 generated), mean len =  2.74
+1.14.749.053 I slot      release: id  0 | task 0 | stop processing: n_tokens = 11270, truncated = 0

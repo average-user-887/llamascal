@@ -1,0 +1,4 @@
+{"label": "q7-fit-q35-f16-48k", "mem_MiB_after_load": "6731"}
+{"label": "q7-fit-q35-f16-48k", "prompt_n": 8323, "pp_tps": 326.4, "tg_tps": 8.13, "n": 128}
+{"label": "q7-fit-q35-f16-48k", "prompt_n": 8522, "pp_tps": 346.1, "tg_tps": 24.04, "n": 128}
+{"label": "q7-fit-q35-f16-48k", "wall_s": 42.8, "peak_mem_MiB": 6755, "mem_after": "6755"}

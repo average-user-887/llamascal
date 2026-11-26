@@ -1,0 +1,269 @@
+From 784d6f51bfcff082ebe5e74e3178bf57fb86ed51 Mon Sep 17 00:00:00 2001
+From: p104-k1-builder <k1@z4-p104.local>
+Date: Mon, 23 Nov 2026 08:13:30 +0100
+Subject: [PATCH 11/17] p104 k3 wip: Q6_K templated vec_dot (vdr 4, aligned
+ 32-bit funnel loads on), 2..3-column Pascal launch shapes, optional ds.y min
+ term and wide path for 4..8 columns (off)
+
+Defaults = screen winners q6c + n2a; P104_DS_MINCOLS=99 and P104_WIDE_MAX_NCOLS=3 keep the new options off.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ ggml/src/ggml-cuda/mmvq.cu | 170 +++++++++++++++++++++++++++++++++++--
+ 1 file changed, 162 insertions(+), 8 deletions(-)
+
+diff --git a/ggml/src/ggml-cuda/mmvq.cu b/ggml/src/ggml-cuda/mmvq.cu
+index 3cf85f3..e416eab 100644
+--- a/ggml/src/ggml-cuda/mmvq.cu
++++ b/ggml/src/ggml-cuda/mmvq.cu
+@@ -93,6 +93,7 @@ static constexpr __host__ __device__ int get_vdr_mmvq(ggml_type type) {
+ 
+ // p104 k1: MMVQ variant with vdr 8, iqs in 0, 8, 16, 24 selects sub-block pair iqs/8 (32 contiguous quant bytes).
+ // The min term uses an exact dp4a sum of the q8_1 values, as vec_dot_q4_K_q8_1 does.
++template <bool exact_min = true>
+ static __device__ __forceinline__ float vec_dot_q4_K_q8_1_wide(
+     const void * __restrict__ vbq, const block_q8_1 * __restrict__ bq8_1, const int & kbx, const int & iqs) {
+ 
+@@ -134,12 +135,18 @@ static __device__ __forceinline__ float vec_dot_q4_K_q8_1_wide(
+         for (int l = 0; l < QI8_1; ++l) {
+             const int u = __ldg(q8 + l);
+             sumi_d = ggml_cuda_dp4a((v[l] >> (4*i)) & 0x0F0F0F0F, u, sumi_d);
+-            sumi_m = ggml_cuda_dp4a(0x01010101, u, sumi_m);
++            if constexpr (exact_min) {
++                sumi_m = ggml_cuda_dp4a(0x01010101, u, sumi_m);
++            }
+         }
+ 
+         const float2 ds8f = __half22float2(__ldg(&bq8i->ds));
+         sumf_d += ds8f.x * (sc[i] * sumi_d);
+-        sumf_m += ds8f.x * (sumi_m * m[i]);
++        if constexpr (exact_min) {
++            sumf_m += ds8f.x * (sumi_m * m[i]);
++        } else {
++            sumf_m += ds8f.y * m[i]; // q8_1 block sum as stored by quantize_q8_1 (as the MMQ path does), halves the dp4a count
++        }
+     }
+ 
+     const float2 dm4f = __half22float2(__ldg(&bq4_K->dm));
+@@ -148,6 +155,7 @@ static __device__ __forceinline__ float vec_dot_q4_K_q8_1_wide(
+ }
+ 
+ // p104 k1: Q5_K variant of vec_dot_q4_K_q8_1_wide, the 5th bit of the 32 values comes from all 32 qh bytes.
++template <bool exact_min = true>
+ static __device__ __forceinline__ float vec_dot_q5_K_q8_1_wide(
+     const void * __restrict__ vbq, const block_q8_1 * __restrict__ bq8_1, const int & kbx, const int & iqs) {
+ 
+@@ -195,12 +203,18 @@ static __device__ __forceinline__ float vec_dot_q5_K_q8_1_wide(
+             const int u = __ldg(q8 + l);
+             const int vl = ((v[l] >> (4*i)) & 0x0F0F0F0F) | ((vh[l] << (4 - i)) & 0x10101010);
+             sumi_d = ggml_cuda_dp4a(vl, u, sumi_d);
+-            sumi_m = ggml_cuda_dp4a(0x01010101, u, sumi_m);
++            if constexpr (exact_min) {
++                sumi_m = ggml_cuda_dp4a(0x01010101, u, sumi_m);
++            }
+         }
+ 
+-        const float d8 = __low2float(__ldg(&bq8i->ds));
+-        sumf_d += d8 * (sc[i] * sumi_d);
+-        sumf_m += d8 * (sumi_m * m[i]);
++        const float2 ds8f = __half22float2(__ldg(&bq8i->ds));
++        sumf_d += ds8f.x * (sc[i] * sumi_d);
++        if constexpr (exact_min) {
++            sumf_m += ds8f.x * (sumi_m * m[i]);
++        } else {
++            sumf_m += ds8f.y * m[i];
++        }
+     }
+ 
+     const float2 dm5f = __half22float2(__ldg(&bq5_K->dm));
+@@ -208,6 +222,97 @@ static __device__ __forceinline__ float vec_dot_q5_K_q8_1_wide(
+     return dm5f.x*sumf_d - dm5f.y*sumf_m;
+ }
+ 
++#ifndef P104_Q6_VDR
++#define P104_Q6_VDR 4
++#endif
++#ifndef P104_Q6_LD
++#define P104_Q6_LD 1
++#endif
++// p104 k3: 4 contiguous ints from a 2-byte aligned address, as 16-bit loads (LD 0) or as 5 aligned 32-bit loads and
++// funnel shifts (LD 1). Q6_K blocks are 210 bytes, so ql/qh are only 2-byte aligned in odd blocks.
++template <int n>
++static __device__ __forceinline__ void p104_load_ints_b2(const uint8_t * p, int * out) {
++    const uintptr_t a = (uintptr_t) p;
++    if constexpr (P104_Q6_LD == 2 && n == 4) {
++        // two aligned 16-byte loads (the second only if the range crosses into it) and register selects
++        const int4 * pa  = (const int4 *) (a & ~(uintptr_t) 15);
++        const int    off = a & 15;
++        const int4 A = __ldg(pa);
++        const int4 B = off != 0 ? __ldg(pa + 1) : A;
++        const int  sh = (off & 3) * 8;
++        int w[5];
++        switch (off >> 2) {
++            case 0:  w[0] = A.x; w[1] = A.y; w[2] = A.z; w[3] = A.w; w[4] = B.x; break;
++            case 1:  w[0] = A.y; w[1] = A.z; w[2] = A.w; w[3] = B.x; w[4] = B.y; break;
++            case 2:  w[0] = A.z; w[1] = A.w; w[2] = B.x; w[3] = B.y; w[4] = B.z; break;
++            default: w[0] = A.w; w[1] = B.x; w[2] = B.y; w[3] = B.z; w[4] = B.w; break;
++        }
++#pragma unroll
++        for (int i = 0; i < n; ++i) {
++            out[i] = __funnelshift_r(w[i], w[i+1], sh);
++        }
++    } else if constexpr (P104_Q6_LD >= 1) {
++        const int * pa = (const int *) (a & ~(uintptr_t) 3);
++        const int   sh = (a & 3) * 8;
++        int w[n+1];
++#pragma unroll
++        for (int i = 0; i <= n; ++i) {
++            w[i] = __ldg(pa + i);
++        }
++#pragma unroll
++        for (int i = 0; i < n; ++i) {
++            out[i] = __funnelshift_r(w[i], w[i+1], sh);
++        }
++    } else {
++        const uint16_t * p16 = (const uint16_t *) p;
++#pragma unroll
++        for (int i = 0; i < n; ++i) {
++            out[i] = __ldg(p16 + 2*i) | (__ldg(p16 + 2*i + 1) << 16);
++        }
++    }
++}
++
++// p104 k3: upstream vec_dot_q6_K_q8_1 with the number of contiguous ints per thread as a template parameter. The
++// upstream index math already keeps vdr = 4 inside one 16-value scale group, one q8_1 block and one qh shift.
++template <int vdr>
++static __device__ __forceinline__ float vec_dot_q6_K_q8_1_v(
++    const void * __restrict__ vbq, const block_q8_1 * __restrict__ bq8_1, const int & kbx, const int & iqs) {
++
++    const block_q6_K * bq6_K = (const block_q6_K *) vbq + kbx;
++
++    const int bq8_offset   = 2 * QR6_K * (iqs / (QI6_K/2)) + (iqs % (QI6_K/2)) / (QI6_K/4);
++    const int scale_offset = (QI6_K/4) * (iqs / (QI6_K/2)) + (iqs % (QI6_K/2)) / (QI6_K/8);
++    const int vh_shift     = 2 * ((iqs % (QI6_K/2)) / (QI6_K/4));
++
++    int vl[vdr];
++    int vh[vdr];
++    p104_load_ints_b2<vdr>(bq6_K->ql + 4*iqs, vl);
++    p104_load_ints_b2<vdr>(bq6_K->qh + 4*((QI6_K/4) * (iqs / (QI6_K/2)) + iqs % (QI6_K/4)), vh);
++
++    const int8_t * scales = bq6_K->scales + scale_offset;
++
++    float sumf = 0.0f;
++#pragma unroll
++    for (int i = 0; i < QR6_K; ++i) {
++        const block_q8_1 * bq8i = bq8_1 + bq8_offset + 2*i;
++        const int * q8 = (const int *) bq8i->qs + iqs % QI8_1;
++        const int sc = __ldg(scales + 4*i);
++
++        int sumi = 0;
++#pragma unroll
++        for (int j = 0; j < vdr; ++j) {
++            const int vil = (vl[j] >> (4*i)) & 0x0F0F0F0F;
++            const int vih = (((vh[j] >> vh_shift) >> (4*i)) << 4) & 0x30303030;
++            const int u   = __ldg(q8 + j);
++            sumi = ggml_cuda_dp4a(vil | vih, u, sumi);
++            sumi = ggml_cuda_dp4a(0xE0E0E0E0, u, sumi);
++        }
++        sumf += __low2float(__ldg(&bq8i->ds)) * (sumi * sc);
++    }
++
++    return __half2float(__ldg(&bq6_K->d)) * sumf;
++}
++
+ // p104 k1: on Pascal (sm_61) the K-quant mat-vec is latency bound with 8 weight bytes per thread.
+ // Wide variant: each thread handles a whole 32-byte quant run (two 16-byte loads) of one sub-block pair.
+ #ifndef P104_WIDE_MAX_NCOLS
+@@ -225,6 +330,34 @@ static __device__ __forceinline__ float vec_dot_q5_K_q8_1_wide(
+ #ifndef P104_RPB_Q6
+ #define P104_RPB_Q6 4
+ #endif
++// p104 k3: launch shape and Q6_K vdr for 2..3 columns (batched decode, -np 2)
++#ifndef P104_NW_N23
++#define P104_NW_N23 2
++#endif
++#ifndef P104_RPB_N23
++#define P104_RPB_N23 2
++#endif
++#ifndef P104_NW_Q6_N23
++#define P104_NW_Q6_N23 4
++#endif
++#ifndef P104_RPB_Q6_N23
++#define P104_RPB_Q6_N23 4
++#endif
++#ifndef P104_Q6_VDR_N23
++#define P104_Q6_VDR_N23 2
++#endif
++// p104 k3: launch shape for the wide Q4_K/Q5_K path at 4..8 columns (used only if P104_WIDE_MAX_NCOLS >= 4)
++// p104 k3: from this many columns on, the wide vec_dots take the Q4_K/Q5_K min term from the stored q8_1 block sums
++// (ds.y, like MMQ) instead of an exact dp4a sum: halves the dp4a work, changes rounding (KLD-gated). 99 = off.
++#ifndef P104_DS_MINCOLS
++#define P104_DS_MINCOLS 99
++#endif
++#ifndef P104_NW_N48
++#define P104_NW_N48 2
++#endif
++#ifndef P104_RPB_N48
++#define P104_RPB_N48 1
++#endif
+ static constexpr __host__ __device__ bool mmvq_pascal_wide(ggml_type type) {
+     return type == GGML_TYPE_Q4_K || type == GGML_TYPE_Q5_K;
+ }
+@@ -619,17 +752,26 @@ static constexpr __device__ int get_mmvq_mmid_max_batch_for_device() {
+ 
+ // The wide vec_dot is used for up to P104_WIDE_MAX_NCOLS columns; with 4..8 columns it was slower than vdr 2.
+ static constexpr __host__ __device__ int get_vdr_mmvq_tbl(ggml_type type, mmvq_parameter_table_id table_id, int ncols_dst) {
++    if (table_id == MMVQ_PARAMETERS_PASCAL && ncols_dst <= 3 && type == GGML_TYPE_Q6_K) {
++        return ncols_dst == 1 ? P104_Q6_VDR : P104_Q6_VDR_N23;
++    }
+     return table_id == MMVQ_PARAMETERS_PASCAL && ncols_dst <= P104_WIDE_MAX_NCOLS && mmvq_pascal_wide(type) ? 8 : get_vdr_mmvq(type);
+ }
+ 
+ static constexpr __device__ vec_dot_q_cuda_t get_vec_dot_q_cuda_tbl(ggml_type type, mmvq_parameter_table_id table_id, int ncols_dst) {
+     if (table_id == MMVQ_PARAMETERS_PASCAL && ncols_dst <= P104_WIDE_MAX_NCOLS) {
+         switch (type) {
+-            case GGML_TYPE_Q4_K: return vec_dot_q4_K_q8_1_wide;
+-            case GGML_TYPE_Q5_K: return vec_dot_q5_K_q8_1_wide;
++            case GGML_TYPE_Q4_K: return ncols_dst >= P104_DS_MINCOLS ? vec_dot_q4_K_q8_1_wide<false> : vec_dot_q4_K_q8_1_wide<true>;
++            case GGML_TYPE_Q5_K: return ncols_dst >= P104_DS_MINCOLS ? vec_dot_q5_K_q8_1_wide<false> : vec_dot_q5_K_q8_1_wide<true>;
+             default: break;
+         }
+     }
++    if (table_id == MMVQ_PARAMETERS_PASCAL && ncols_dst == 1 && type == GGML_TYPE_Q6_K && (P104_Q6_VDR != 2 || P104_Q6_LD != 0)) {
++        return vec_dot_q6_K_q8_1_v<P104_Q6_VDR>;
++    }
++    if (table_id == MMVQ_PARAMETERS_PASCAL && ncols_dst >= 2 && ncols_dst <= 3 && type == GGML_TYPE_Q6_K && (P104_Q6_VDR_N23 != 2 || P104_Q6_LD != 0)) {
++        return vec_dot_q6_K_q8_1_v<P104_Q6_VDR_N23>;
++    }
+     return get_vec_dot_q_cuda(type);
+ }
+ 
+@@ -783,6 +925,12 @@ static constexpr __host__ __device__ int calc_nwarps(ggml_type type, int ncols_d
+         if (ncols_dst == 1 && mmvq_pascal_tuned(type)) {
+             return type == GGML_TYPE_Q6_K ? P104_NW_Q6 : P104_NW;
+         }
++        if (ncols_dst >= 2 && ncols_dst <= 3 && mmvq_pascal_tuned(type)) {
++            return type == GGML_TYPE_Q6_K ? P104_NW_Q6_N23 : P104_NW_N23;
++        }
++        if (ncols_dst >= 4 && ncols_dst <= P104_WIDE_MAX_NCOLS && mmvq_pascal_wide(type)) {
++            return P104_NW_N48;
++        }
+         return calc_nwarps(type, ncols_dst, MMVQ_PARAMETERS_GENERIC);
+     }
+     return 1;
+@@ -806,6 +954,12 @@ static constexpr __host__ __device__ int calc_rows_per_block(ggml_type type, int
+     if (table_id == MMVQ_PARAMETERS_PASCAL && ncols_dst == 1 && !small_k && mmvq_pascal_tuned(type)) {
+         return type == GGML_TYPE_Q6_K ? P104_RPB_Q6 : P104_RPB;
+     }
++    if (table_id == MMVQ_PARAMETERS_PASCAL && ncols_dst >= 2 && ncols_dst <= 3 && mmvq_pascal_tuned(type)) {
++        return type == GGML_TYPE_Q6_K ? P104_RPB_Q6_N23 : P104_RPB_N23;
++    }
++    if (table_id == MMVQ_PARAMETERS_PASCAL && ncols_dst >= 4 && ncols_dst <= P104_WIDE_MAX_NCOLS && mmvq_pascal_wide(type)) {
++        return P104_RPB_N48;
++    }
+     if (table_id == MMVQ_PARAMETERS_GENERIC || table_id == MMVQ_PARAMETERS_GCN || table_id == MMVQ_PARAMETERS_TURING || table_id == MMVQ_PARAMETERS_GB10 || table_id == MMVQ_PARAMETERS_RDNA1 || table_id == MMVQ_PARAMETERS_PASCAL) {
+         switch (ncols_dst) {
+             case 1:
+-- 
+2.43.0
+

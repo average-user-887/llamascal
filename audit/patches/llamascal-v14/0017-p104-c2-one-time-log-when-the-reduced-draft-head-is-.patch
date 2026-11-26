@@ -1,0 +1,32 @@
+From 67df1facf36aca85e0b19d9f75e8b0868ac550aa Mon Sep 17 00:00:00 2001
+From: p104-builder-a <a@z4-p104.local>
+Date: Tue, 24 Nov 2026 21:58:46 +0100
+Subject: [PATCH 17/20] p104 c2: one-time log when the reduced draft head is
+ applied (dispatch proof)
+
+Assisted-by: Claude Opus 5.5
+(cherry picked from commit 57111def98ecf11043e16aaaf9c98f0d7e200741)
+---
+ src/models/qwen35.cpp | 6 ++++++
+ 1 file changed, 6 insertions(+)
+
+diff --git a/src/models/qwen35.cpp b/src/models/qwen35.cpp
+index 8f6353c..64d1191 100644
+--- a/src/models/qwen35.cpp
++++ b/src/models/qwen35.cpp
+@@ -685,6 +685,12 @@ llama_model_qwen35::graph_mtp::graph_mtp(const llm_graph_params & params)
+         if (n_dv > 0 && n_dv < head_w->ne[1] && head_s == nullptr && all_backend) {
+             head_w = ggml_view_2d(ctx0, head_w, head_w->ne[0], n_dv, head_w->nb[1], 0);
+             cb(head_w, "mtp_head_w_reduced", -1);
++            static bool logged = false;
++            if (!logged) {
++                logged = true;
++                LLAMA_LOG_INFO("%s: p104 MTP draft head reduced to %lld x %lld (n_outputs %d)\n", __func__,
++                        (long long) head_w->ne[0], (long long) head_w->ne[1], (int) n_outputs);
++            }
+         }
+     }
+ 
+-- 
+2.43.0
+

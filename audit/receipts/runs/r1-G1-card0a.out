@@ -1,0 +1,45 @@
+window open: p104-svc stopped, GPU memory used 5 MiB
+21:25:58 cd-c0a-pp0 rc=0
+21:27:06 cd-c0a-kv-f16-16k rc=0
+21:28:10 cd-c0a-kv-q8_0-16k rc=0
+21:29:17 cd-c0a-kv-q4_0-16k rc=0
+21:31:37 cd-c0a-kv-f16-32k rc=0
+21:34:02 cd-c0a-kv-q8_0-32k rc=0
+== runs/cd-c0a-kv-f16-16k.out
+f16 p 512 n 0 d 16384 avg_ts 342.98 stddev 10.68
+f16 p 0 n 64 d 16384 avg_ts 34.82 stddev 0.0
+== runs/cd-c0a-kv-f16-32k.out
+f16 p 512 n 0 d 32768 avg_ts 255.1 stddev 0.0
+f16 p 0 n 64 d 32768 avg_ts 31.52 stddev 0.0
+== runs/cd-c0a-kv-q4_0-16k.out
+q4_0 p 512 n 0 d 16384 avg_ts 345.97 stddev 0.12
+q4_0 p 0 n 64 d 16384 avg_ts 27.98 stddev 0.04
+== runs/cd-c0a-kv-q8_0-16k.out
+q8_0 p 512 n 0 d 16384 avg_ts 349.38 stddev 0.21
+q8_0 p 0 n 64 d 16384 avg_ts 31.97 stddev 0.03
+== runs/cd-c0a-kv-q8_0-32k.out
+q8_0 p 512 n 0 d 32768 avg_ts 245.44 stddev 0.0
+q8_0 p 0 n 64 d 32768 avg_ts 27.94 stddev 0.0
+== runs/cd-c0a-pp0.out
+f16 p 512 n 0 d 0 avg_ts 526.74 stddev 13.33
+f16 p 2048 n 0 d 0 avg_ts 526.74 stddev 4.26
+21:34:02 start cd-c0a-graph-A1 ~/p104-exp/v11-bin ~/models/experimental/qwen35-9b-mtp/Qwen3.5-9B-MTP-Q4_K_M.gguf ['--spec-type', 'draft-mtp', '--spec-draft-n-max', '2', '-v'] {'GGML_CUDA_GRAPH_DEBUG': '1'}
+21:37:05 cd-c0a-graph-A1 client rc 0
+A1 all 37.52 agent 27.85 chat 43.18 code 46.97 copy 32.09 draft_acc 2136/2627
+text identical across all arms: 16/16
+21:37:07 DONE ok
+graph-debug lines in runs/cd-c0a-graph-A1-server.out:
+1641
+      1 1.31.678.069 D spec        draft:  - seq_id 0, draft candidate   1, pos   1:  11969 (   0.071) ' capture'
+      1 0.44.430.336 D ggml_cuda_graph_set_enabled: disabling CUDA graphs due to GPU architecture
+      1 0.44.330.506 D ggml_cuda_graph_set_enabled: disabling CUDA graphs due to GPU architecture
+      1 0.43.967.775 D ggml_cuda_graph_set_enabled: disabling CUDA graphs due to GPU architecture
+      1 0.41.457.966 I srv    load_model: use `--cache-ram 0` to disable the prompt cache
+      1 0.41.311.736 D ggml_cuda_graph_set_enabled: disabling CUDA graphs due to GPU architecture
+      1 0.41.281.019 D ggml_cuda_graph_set_enabled: disabling CUDA graphs due to GPU architecture
+      1 0.41.222.893 D ggml_cuda_graph_set_enabled: disabling CUDA graphs due to GPU architecture
+      1 0.41.151.687 D ggml_cuda_graph_set_enabled: disabling CUDA graphs due to GPU architecture
+      1 0.00.973.762 D ggml_cuda_graph_set_enabled: disabling CUDA graphs due to GPU architecture
+      1 0.00.548.309 D ggml_cuda_graph_set_enabled: disabling CUDA graphs due to GPU architecture
+21:37:07 DONE card0a
+window closed: p104-svc healthy

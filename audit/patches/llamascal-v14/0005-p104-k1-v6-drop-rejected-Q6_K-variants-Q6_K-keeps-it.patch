@@ -1,0 +1,276 @@
+From 8a32b07ff01e99e4a39a410e03b2ddeb8ee1f2e7 Mon Sep 17 00:00:00 2001
+From: p104-k1-builder <k1@z4-p104.local>
+Date: Mon, 23 Nov 2026 02:25:18 +0100
+Subject: [PATCH 05/20] p104 k1 v6: drop rejected Q6_K variants; Q6_K keeps its
+ vec_dot with 4 rows per block on Pascal
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ ggml/src/ggml-cuda/mmvq.cu | 193 ++-----------------------------------
+ 1 file changed, 10 insertions(+), 183 deletions(-)
+
+diff --git a/ggml/src/ggml-cuda/mmvq.cu b/ggml/src/ggml-cuda/mmvq.cu
+index 66e2972..93d972a 100644
+--- a/ggml/src/ggml-cuda/mmvq.cu
++++ b/ggml/src/ggml-cuda/mmvq.cu
+@@ -93,12 +93,6 @@ static constexpr __host__ __device__ int get_vdr_mmvq(ggml_type type) {
+ 
+ // p104 k1: MMVQ variant with vdr 8, iqs in 0, 8, 16, 24 selects sub-block pair iqs/8 (32 contiguous quant bytes).
+ // The min term uses an exact dp4a sum of the q8_1 values, as vec_dot_q4_K_q8_1 does.
+-#ifndef P104_Q6_W4
+-#define P104_Q6_W4 0
+-#endif
+-#ifndef P104_Q6_B2
+-#define P104_Q6_B2 1
+-#endif
+ #ifndef P104_EXACT_SUM
+ #define P104_EXACT_SUM 1
+ #endif
+@@ -223,74 +217,6 @@ static __device__ __forceinline__ float vec_dot_q5_K_q8_1_wide(
+     return dm5f.x*sumf_d - dm5f.y*sumf_m;
+ }
+ 
+-// 16 bytes from a 2-byte aligned address with 4-byte loads (q6_K blocks are 210 bytes, odd blocks are not 4-byte aligned).
+-// May read up to 4 bytes past p + 16, callers keep that inside the block.
+-static __device__ __forceinline__ void p104_load16_b2(const uint8_t * p, int * out) {
+-    const uintptr_t a  = (uintptr_t) p;
+-    const int     * pa = (const int *) (a & ~(uintptr_t) 3);
+-    const int       sh = (a & 3) * 8;
+-    int w[5];
+-#pragma unroll
+-    for (int i = 0; i < 5; ++i) {
+-        w[i] = pa[i];
+-    }
+-#pragma unroll
+-    for (int i = 0; i < 4; ++i) {
+-        out[i] = __funnelshift_r(w[i], w[i+1], sh);
+-    }
+-}
+-
+-// p104 k1: Q6_K with vdr 4, 8 threads per super-block. Thread t = iqs/4 reads ql bytes [16t, 16t+16) so that the
+-// threads of a super-block cover ql contiguously; half n = t/4, offset o = 16*(t%4) within the half's 64 ql bytes.
+-static __device__ __forceinline__ float vec_dot_q6_K_q8_1_w4(
+-    const void * __restrict__ vbq, const block_q8_1 * __restrict__ bq8_1, const int & kbx, const int & iqs) {
+-
+-    const block_q6_K * bq6_K = (const block_q6_K *) vbq + kbx;
+-    const int t  = iqs / 4;
+-    const int n  = t / 4;
+-    const int o  = 16 * (t % 4);
+-    const int gb = o / 32;      // 0: ql low nibbles are sub-block 0 of the half, high nibbles sub-block 2; 1: sub-blocks 1, 3
+-    const int l  = o % 32;
+-
+-    int Q[4];
+-    int H[4];
+-#if P104_Q6_B2
+-#pragma unroll
+-    for (int i = 0; i < 4; ++i) {
+-        Q[i] = get_int_b2(bq6_K->ql, 4*t + i);
+-        H[i] = get_int_b2(bq6_K->qh, 8*n + l/4 + i);
+-    }
+-#else
+-    p104_load16_b2(bq6_K->ql + 16*t, Q);
+-    p104_load16_b2(bq6_K->qh + 32*n + l, H);
+-#endif
+-
+-    const int8_t * scales = bq6_K->scales + 8*n + l/16;
+-
+-    float sumf = 0.0f;
+-
+-#pragma unroll
+-    for (int hi = 0; hi < 2; ++hi) {
+-        const int g = gb + 2*hi;
+-        const block_q8_1 * bq8g = bq8_1 + 4*n + g;
+-        const int * q8 = (const int *) bq8g->qs + l/4;
+-
+-        int sumi = 0;
+-#pragma unroll
+-        for (int i = 0; i < 4; ++i) {
+-            const int vl = (Q[i] >> (4*hi)) & 0x0F0F0F0F;
+-            const int vh = ((H[i] >> (2*g)) << 4) & 0x30303030;
+-            const int u  = q8[i];
+-            sumi = ggml_cuda_dp4a(vl | vh,  u, sumi);
+-            sumi = ggml_cuda_dp4a(0xE0E0E0E0, u, sumi);
+-        }
+-
+-        sumf += __low2float(bq8g->ds) * (sumi * scales[2*g]);
+-    }
+-
+-    return __half2float(bq6_K->d) * sumf;
+-}
+-
+ // p104 k1: on Pascal (sm_61) the K-quant mat-vec is latency bound with 8 weight bytes per thread.
+ // Wide variant: each thread handles a whole 32-byte quant run (two 16-byte loads) of one sub-block pair.
+ #ifndef P104_NW
+@@ -303,10 +229,15 @@ static __device__ __forceinline__ float vec_dot_q6_K_q8_1_w4(
+ #define P104_NW_Q6 4
+ #endif
+ #ifndef P104_RPB_Q6
+-#define P104_RPB_Q6 1
++#define P104_RPB_Q6 4
+ #endif
+ static constexpr __host__ __device__ bool mmvq_pascal_wide(ggml_type type) {
+-    return type == GGML_TYPE_Q4_K || type == GGML_TYPE_Q5_K || type == GGML_TYPE_Q6_K;
++    return type == GGML_TYPE_Q4_K || type == GGML_TYPE_Q5_K;
++}
++
++// Types that get the Pascal nwarps / rows per block below (Q6_K keeps its vec_dot, only more rows per block).
++static constexpr __host__ __device__ bool mmvq_pascal_tuned(ggml_type type) {
++    return mmvq_pascal_wide(type) || type == GGML_TYPE_Q6_K;
+ }
+ 
+ enum mmvq_parameter_table_id {
+@@ -693,7 +624,7 @@ static constexpr __device__ int get_mmvq_mmid_max_batch_for_device() {
+ }
+ 
+ static constexpr __host__ __device__ int get_vdr_mmvq_tbl(ggml_type type, mmvq_parameter_table_id table_id) {
+-    return table_id == MMVQ_PARAMETERS_PASCAL && mmvq_pascal_wide(type) ? (type == GGML_TYPE_Q6_K ? (P104_Q6_W4 ? 4 : get_vdr_mmvq(type)) : 8) : get_vdr_mmvq(type);
++    return table_id == MMVQ_PARAMETERS_PASCAL && mmvq_pascal_wide(type) ? 8 : get_vdr_mmvq(type);
+ }
+ 
+ static constexpr __device__ vec_dot_q_cuda_t get_vec_dot_q_cuda_tbl(ggml_type type, mmvq_parameter_table_id table_id) {
+@@ -701,7 +632,6 @@ static constexpr __device__ vec_dot_q_cuda_t get_vec_dot_q_cuda_tbl(ggml_type ty
+         switch (type) {
+             case GGML_TYPE_Q4_K: return vec_dot_q4_K_q8_1_wide;
+             case GGML_TYPE_Q5_K: return vec_dot_q5_K_q8_1_wide;
+-            case GGML_TYPE_Q6_K: return P104_Q6_W4 ? vec_dot_q6_K_q8_1_w4 : get_vec_dot_q_cuda(type);
+             default: break;
+         }
+     }
+@@ -855,7 +785,7 @@ static constexpr __host__ __device__ int calc_nwarps(ggml_type type, int ncols_d
+         return calc_nwarps(type, ncols_dst, MMVQ_PARAMETERS_GENERIC);
+     }
+     if (table_id == MMVQ_PARAMETERS_PASCAL) {
+-        if (ncols_dst == 1 && mmvq_pascal_wide(type)) {
++        if (ncols_dst == 1 && mmvq_pascal_tuned(type)) {
+             return type == GGML_TYPE_Q6_K ? P104_NW_Q6 : P104_NW;
+         }
+         return calc_nwarps(type, ncols_dst, MMVQ_PARAMETERS_GENERIC);
+@@ -878,7 +808,7 @@ static constexpr __host__ __device__ bool mmvq_two_rows_ncols1(ggml_type type) {
+ }
+ 
+ static constexpr __host__ __device__ int calc_rows_per_block(ggml_type type, int ncols_dst, int table_id, bool small_k = false, int nwarps = 1) {
+-    if (table_id == MMVQ_PARAMETERS_PASCAL && ncols_dst == 1 && !small_k && mmvq_pascal_wide(type)) {
++    if (table_id == MMVQ_PARAMETERS_PASCAL && ncols_dst == 1 && !small_k && mmvq_pascal_tuned(type)) {
+         return type == GGML_TYPE_Q6_K ? P104_RPB_Q6 : P104_RPB;
+     }
+     if (table_id == MMVQ_PARAMETERS_GENERIC || table_id == MMVQ_PARAMETERS_GCN || table_id == MMVQ_PARAMETERS_TURING || table_id == MMVQ_PARAMETERS_GB10 || table_id == MMVQ_PARAMETERS_RDNA1 || table_id == MMVQ_PARAMETERS_PASCAL) {
+@@ -1437,90 +1367,6 @@ static bool p104_mmvq_log() {
+     return enabled;
+ }
+ 
+-// p104 k1: Q6_K mat-vec for one column on Pascal. q6_K blocks are 210 bytes, so per-thread quant loads are 16-bit and
+-// poorly coalesced. Here the block first copies the contiguous bytes of the super-blocks of this iteration into shared
+-// memory with aligned 16-byte loads, then the unchanged vec_dot_q6_K_q8_1 reads the quants from shared memory.
+-#ifndef P104_Q6_SMEM
+-#define P104_Q6_SMEM 1
+-#endif
+-#ifndef P104_Q6S_NW
+-#define P104_Q6S_NW 4
+-#endif
+-#ifndef P104_Q6S_RPB
+-#define P104_Q6S_RPB 1
+-#endif
+-template <int nwarps, int rows_per_block>
+-__launch_bounds__(nwarps*WARP_SIZE, 1)
+-static __global__ void mul_mat_vec_q6_K_smem(
+-        const void * __restrict__ vx, const void * __restrict__ vy, float * __restrict__ dst,
+-        const int ncols_x, const int nrows_x, const int stride_row_x) {
+-    constexpr int vdr             = VDR_Q6_K_Q8_1_MMVQ;
+-    constexpr int tpb             = QI6_K/vdr;                  // threads per super-block
+-    constexpr int blocks_per_iter = nwarps*WARP_SIZE/tpb;
+-    constexpr int bs              = sizeof(block_q6_K);
+-    constexpr int n4_max          = (blocks_per_iter*bs + 15)/16 + 1;
+-
+-    __shared__ int4 xs[rows_per_block][n4_max];
+-
+-    const int tid  = WARP_SIZE*threadIdx.y + threadIdx.x;
+-    const int row0 = rows_per_block*blockIdx.x;
+-    const int blocks_per_row_x = ncols_x / QK_K;
+-    const block_q8_1 * y = (const block_q8_1 *) vy;
+-
+-    float tmp[rows_per_block] = {0.0f};
+-
+-    for (int base = 0; base < blocks_per_row_x; base += blocks_per_iter) {
+-        const int nb = min(blocks_per_iter, blocks_per_row_x - base);
+-        int off[rows_per_block];
+-#pragma unroll
+-        for (int i = 0; i < rows_per_block; ++i) {
+-            const char * src    = (const char *) vx + ((int64_t) (row0 + i)*stride_row_x + base)*bs;
+-            const int4 * src_al = (const int4 *) ((uintptr_t) src & ~(uintptr_t) 15);
+-            off[i] = (int) ((uintptr_t) src & 15);
+-            const int n4 = (off[i] + nb*bs + 15) / 16;
+-            if (rows_per_block == 1 || row0 + i < nrows_x) {
+-                for (int j = tid; j < n4; j += nwarps*WARP_SIZE) {
+-                    xs[i][j] = src_al[j];
+-                }
+-            }
+-        }
+-        __syncthreads();
+-
+-        const int kbl = tid / tpb;
+-        if (kbl < nb) {
+-            const int kqs = vdr * (tid % tpb);
+-#pragma unroll
+-            for (int i = 0; i < rows_per_block; ++i) {
+-                tmp[i] += vec_dot_q6_K_q8_1((const char *) xs[i] + off[i], &y[(base + kbl)*(QK_K/QK8_1)], kbl, kqs);
+-            }
+-        }
+-        __syncthreads();
+-    }
+-
+-    __shared__ float tmp_shared[nwarps-1 > 0 ? nwarps-1 : 1][rows_per_block][WARP_SIZE];
+-    if (threadIdx.y > 0) {
+-#pragma unroll
+-        for (int i = 0; i < rows_per_block; ++i) {
+-            tmp_shared[threadIdx.y-1][i][threadIdx.x] = tmp[i];
+-        }
+-    }
+-    __syncthreads();
+-    if (threadIdx.y > 0) {
+-        return;
+-    }
+-#pragma unroll
+-    for (int i = 0; i < rows_per_block; ++i) {
+-#pragma unroll
+-        for (int l = 0; l < nwarps-1; ++l) {
+-            tmp[i] += tmp_shared[l][i][threadIdx.x];
+-        }
+-        tmp[i] = warp_reduce_sum<WARP_SIZE>(tmp[i]);
+-        if (threadIdx.x == i && (rows_per_block == 1 || row0 + i < nrows_x)) {
+-            dst[row0 + i] = tmp[i];
+-        }
+-    }
+-}
+-
+ template <ggml_type type>
+ static void mul_mat_vec_q_switch_ncols_dst(
+         const void * vx, const void * vy, const int32_t * ids, const ggml_cuda_mm_fusion_args_device fusion, float * dst,
+@@ -1611,25 +1457,6 @@ static void mul_mat_vec_q_switch_ncols_dst(
+         return idle * 8 <= iters_wide * 2;
+     };
+ 
+-    if constexpr (type == GGML_TYPE_Q6_K) {
+-        const bool any_fusion = fusion.gate != nullptr || fusion.x_bias != nullptr || fusion.gate_bias != nullptr ||
+-                                fusion.x_scale != nullptr || fusion.gate_scale != nullptr || fusion.shared_up != nullptr;
+-        if (P104_Q6_SMEM && table_id == MMVQ_PARAMETERS_PASCAL && ncols_dst == 1 && !has_ids && !any_fusion &&
+-                nchannels_dst == 1 && nsamples_dst == 1) {
+-            constexpr int nw  = P104_Q6S_NW;
+-            constexpr int rpb = P104_Q6S_RPB;
+-            const dim3 block_nums((nrows_x + rpb - 1) / rpb, 1, 1);
+-            const dim3 block_dims(WARP_SIZE, nw, 1);
+-            if (p104_mmvq_log()) {
+-                fprintf(stderr, "p104mmvq type=%s k=%d m=%d ncols_dst=1 ids=0 gate=0 table=%d kernel=q6_K_smem nwarps=%d grid=%u\n",
+-                    ggml_type_name(type), ncols_x, nrows_x, (int) table_id, nw, block_nums.x);
+-            }
+-            mul_mat_vec_q6_K_smem<nw, rpb><<<block_nums, block_dims, 0, stream>>>(vx, vy, dst, ncols_x, nrows_x, stride_row_x);
+-            CUDA_CHECK(cudaGetLastError());
+-            return;
+-        }
+-    }
+-
+     if (has_ids && ncols_dst > 1) {
+         // Multi-token MUL_MAT_ID path - dedicated MoE kernel
+         mul_mat_vec_q_moe_launch<type>(
+-- 
+2.43.0
+

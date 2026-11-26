@@ -1,0 +1,53 @@
+0.24.824.456 I cmn          init: llama threadpool init, n_threads = 4
+0.25.008.810 I 
+0.25.008.988 I system_info: n_threads = 4 (n_threads_batch = 4) / 8 | CUDA : ARCHS = 610 | USE_GRAPHS = 1 | FA_QUANTS = q4_0-q4_0,q8_0-q8_0,f16-f16,bf16-bf16,f8_e4m3-f8_e4m3 | CPU : SSE3 = 1 | SSSE3 = 1 | AVX = 1 | AVX2 = 1 | F16C = 1 | FMA = 1 | BMI2 = 1 | AVX512 = 1 | LLAMAFILE = 1 | OPENMP = 1 | REPACK = 1 | 
+0.25.132.051 I kl_divergence: computing over 5 chunks, n_ctx=1024, batch_size=1024, n_seq=1
+0.38.681.546 I kl_divergence: 13.55 seconds per pass - ETA 1.12 minutes
+
+chunk             PPL               ln(PPL(Q)/PPL(base))          KL Divergence              Δp RMS            Same top p
+   1       4.3621 ±    0.4574      -0.00061 ±    0.00109       0.00035 ±    0.00007     0.477 ±  0.094 %    99.609 ±  0.276 %
+   2       6.2756 ±    0.4833       0.00019 ±    0.00085       0.00039 ±    0.00003     0.491 ±  0.049 %    99.315 ±  0.258 %
+   3       7.3719 ±    0.4810      -0.00021 ±    0.00077       0.00043 ±    0.00003     0.505 ±  0.035 %    98.956 ±  0.260 %
+   4       7.9386 ±    0.4574      -0.00048 ±    0.00069       0.00047 ±    0.00003     0.608 ±  0.067 %    98.924 ±  0.228 %
+   5       8.5889 ±    0.4400      -0.00027 ±    0.00062       0.00046 ±    0.00002     0.587 ±  0.056 %    98.865 ±  0.210 %
+
+====== Perplexity statistics ======
+Mean PPL(Q)                   :   8.588902 ±   0.440009
+Mean PPL(base)                :   8.591221 ±   0.440260
+Cor(ln(PPL(Q)), ln(PPL(base))):  99.99%
+Mean ln(PPL(Q)/PPL(base))     :  -0.000270 ±   0.000617
+Mean PPL(Q)/PPL(base)         :   0.999730 ±   0.000617
+Mean PPL(Q)-PPL(base)         :  -0.002319 ±   0.005302
+
+====== KL divergence statistics ======
+Mean    KLD:   0.000462 ±   0.000021
+Maximum KLD:   0.033822
+99.9%   KLD:   0.007860
+99.0%   KLD:   0.002443
+95.0%   KLD:   0.001278
+90.0%   KLD:   0.000945
+Median  KLD:   0.000314
+10.0%   KLD:   0.000010
+ 5.0%   KLD:   0.000002
+ 1.0%   KLD:  -0.000001
+ 0.1%   KLD:  -0.000012
+Minimum KLD:  -0.000033
+
+====== Token probability statistics ======
+Mean    Δp:  0.002 ± 0.012 %
+Maximum Δp: 12.452%
+99.9%   Δp:  3.887%
+99.0%   Δp:  1.583%
+95.0%   Δp:  0.777%
+90.0%   Δp:  0.498%
+75.0%   Δp:  0.106%
+Median  Δp:  0.000%
+25.0%   Δp: -0.117%
+10.0%   Δp: -0.510%
+ 5.0%   Δp: -0.821%
+ 1.0%   Δp: -1.581%
+ 0.1%   Δp: -3.226%
+Minimum Δp: -3.701%
+RMS Δp    :  0.587 ± 0.056 %
+Same top p: 98.865 ± 0.210 %
+

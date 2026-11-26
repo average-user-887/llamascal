@@ -1,0 +1,13 @@
+{
+  "tag": "c2-par-B1",
+  "image": "p104-llama:b098f6f-20261123",
+  "container": "p104-c2-par-B1",
+  "cmd": "llama-bench -m /models/experimental/qwen35-9b/Qwen3.5-9B-Q4_K_M.gguf -ngl 99 -fa 1 -ctk f16 -ctv f16 -ub 512 -t 4 -p 512 -n 128 -d 0 -r 5",
+  "start": "39, 1898, 5005, 52.30, 0, 5, Not Active, Not Active, Not Active, Not Active",
+  "end": "43, 1898, 5005, 52.89, 0, 5, Not Active, Not Active, Not Active, Not Active",
+  "max_temp": 45,
+  "trip": null,
+  "rc": 0,
+  "secs": 35,
+  "utc": "2026-11-23T14:43:37Z"
+}

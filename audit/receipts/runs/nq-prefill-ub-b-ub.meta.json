@@ -1,0 +1,13 @@
+{
+  "tag": "nq-prefill-ub-b-ub",
+  "image": "p104-llama:b098f6f-20261123",
+  "container": "p104-nq-prefill-ub-b-ub",
+  "cmd": "llama-bench -m /models/experimental/qwen35-9b/Qwen3.5-9B-Q4_K_M.gguf -ngl 99 -fa 1 -ctk f16 -ctv f16 -t 4 -p 2048 -n 0 -d 0,8192 -b 2048 -ub 128,256,512,1024,2048 -r 3 -o jsonl",
+  "start": "45, 139, 405, 9.64, 0, 5, Not Active, Not Active, Not Active, Not Active",
+  "end": "61, 1860, 5005, 54.76, 0, 5, Not Active, Not Active, Not Active, Not Active",
+  "max_temp": 62,
+  "trip": null,
+  "rc": 0,
+  "secs": 274,
+  "utc": "2026-11-24T09:27:11Z"
+}

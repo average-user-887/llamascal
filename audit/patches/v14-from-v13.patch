@@ -1,0 +1,221 @@
+diff --git a/ggml/src/ggml-cuda/gated_delta_net.cu b/ggml/src/ggml-cuda/gated_delta_net.cu
+index ae2374c..342dde8 100644
+--- a/ggml/src/ggml-cuda/gated_delta_net.cu
++++ b/ggml/src/ggml-cuda/gated_delta_net.cu
+@@ -81,7 +81,7 @@ gated_delta_net_cuda(const float * q,
+         const float * beta_t = beta + gb_offset;
+         const float * g_t    = g    + gb_offset * (KDA ? S_v : 1);
+ 
+-        const float beta_val = *beta_t;
++        const float beta_val = __ldg(beta_t);
+ 
+         // Cache k and q in registers
+         float k_reg[rows_per_lane];
+@@ -89,12 +89,12 @@ gated_delta_net_cuda(const float * q,
+ #pragma unroll
+         for (int r = 0; r < rows_per_lane; r++) {
+             const int i = r * lanes_per_col + lane_in_col;
+-            k_reg[r] = k_t[i];
+-            q_reg[r] = q_t[i];
++            k_reg[r] = __ldg(k_t + i);
++            q_reg[r] = __ldg(q_t + i);
+         }
+ 
+         if constexpr (!KDA) {
+-            const float g_val = expf(*g_t);
++            const float g_val = expf(__ldg(g_t));
+ 
+             // kv[col] = (S^T @ k)[col] = sum_i S[i][col] * k[i]
+             float kv_shard = 0.0f;
+@@ -105,7 +105,7 @@ gated_delta_net_cuda(const float * q,
+             float kv_col = warp_reduce_sum<lanes_per_col>(kv_shard);
+ 
+             // delta[col] = (v[col] - g * kv[col]) * beta
+-            float delta_col = (v_t[col] - g_val * kv_col) * beta_val;
++            float delta_col = (__ldg(v_t + col) - g_val * kv_col) * beta_val;
+ 
+             // fused: S[i][col] = g * S[i][col] + k[i] * delta[col]
+             // attn[col] = (S^T @ q)[col] = sum_i S[i][col] * q[i]
+@@ -122,26 +122,27 @@ gated_delta_net_cuda(const float * q,
+                 attn_data[col] = attn_col * scale;
+             }
+         } else {
++            float g_reg[rows_per_lane];
+             // kv[col] = sum_i g[i] * S[i][col] * k[i]
+             float kv_shard = 0.0f;
+ #pragma unroll
+             for (int r = 0; r < rows_per_lane; r++) {
+                 const int i = r * lanes_per_col + lane_in_col;
+-                kv_shard += expf(g_t[i]) * s_shard[r] * k_reg[r];
++                g_reg[r] = expf(__ldg(g_t + i));
++                kv_shard += g_reg[r] * s_shard[r] * k_reg[r];
+             }
+ 
+             float kv_col = warp_reduce_sum<lanes_per_col>(kv_shard);
+ 
+             // delta[col] = (v[col] - kv[col]) * beta
+-            float delta_col = (v_t[col] - kv_col) * beta_val;
++            float delta_col = (__ldg(v_t + col) - kv_col) * beta_val;
+ 
+             // fused: S[i][col] = g[i] * S[i][col] + k[i] * delta[col]
+             // attn[col] = (S^T @ q)[col] = sum_i S[i][col] * q[i]
+             float attn_partial = 0.0f;
+ #pragma unroll
+             for (int r = 0; r < rows_per_lane; r++) {
+-                const int i = r * lanes_per_col + lane_in_col;
+-                s_shard[r]  = expf(g_t[i]) * s_shard[r] + k_reg[r] * delta_col;
++                s_shard[r]  = g_reg[r] * s_shard[r] + k_reg[r] * delta_col;
+                 attn_partial += s_shard[r] * q_reg[r];
+             }
+ 
+diff --git a/ggml/src/ggml-cuda/mmq-config-pascal-dp4a.cuh b/ggml/src/ggml-cuda/mmq-config-pascal-dp4a.cuh
+index 8519944..cf59d8a 100644
+--- a/ggml/src/ggml-cuda/mmq-config-pascal-dp4a.cuh
++++ b/ggml/src/ggml-cuda/mmq-config-pascal-dp4a.cuh
+@@ -113,6 +113,7 @@ static constexpr __host__ __device__ ggml_cuda_mmq_config ggml_cuda_mmq_get_conf
+     CASE(GGML_TYPE_Q4_K, 256, 2, 64,  16, GGML_CUDA_MMQ_SRAM_LAYOUT_Q8_1, MMQ_ITER_K, false, true);
+     CASE(GGML_TYPE_Q4_K, 256, 2, 64,  32, GGML_CUDA_MMQ_SRAM_LAYOUT_Q8_1, MMQ_ITER_K, false, true);
+     CASE(GGML_TYPE_Q4_K, 256, 2, 64,  64, GGML_CUDA_MMQ_SRAM_LAYOUT_Q8_1, MMQ_ITER_K, false, true);
++    CASE(GGML_TYPE_Q4_K, 256, 2, 64, 128, GGML_CUDA_MMQ_SRAM_LAYOUT_Q8_1, MMQ_ITER_K, false, true); // p104 c7b
+     CASE(GGML_TYPE_Q4_K, 256, 2, 64,   8, GGML_CUDA_MMQ_SRAM_LAYOUT_Q8_1, MMQ_ITER_K, false, false);
+     CASE(GGML_TYPE_Q4_K, 256, 2, 64,  16, GGML_CUDA_MMQ_SRAM_LAYOUT_Q8_1, MMQ_ITER_K, false, false);
+     CASE(GGML_TYPE_Q4_K, 256, 2, 64,  24, GGML_CUDA_MMQ_SRAM_LAYOUT_Q8_1, MMQ_ITER_K, false, false);
+@@ -120,11 +121,13 @@ static constexpr __host__ __device__ ggml_cuda_mmq_config ggml_cuda_mmq_get_conf
+     CASE(GGML_TYPE_Q4_K, 256, 2, 64,  40, GGML_CUDA_MMQ_SRAM_LAYOUT_Q8_1, MMQ_ITER_K, false, false);
+     CASE(GGML_TYPE_Q4_K, 256, 2, 64,  48, GGML_CUDA_MMQ_SRAM_LAYOUT_Q8_1, MMQ_ITER_K, false, false);
+     CASE(GGML_TYPE_Q4_K, 256, 2, 64,  64, GGML_CUDA_MMQ_SRAM_LAYOUT_Q8_1, MMQ_ITER_K, false, false);
++    CASE(GGML_TYPE_Q4_K, 256, 2, 64, 128, GGML_CUDA_MMQ_SRAM_LAYOUT_Q8_1, MMQ_ITER_K, false, false); // p104 c7b
+ 
+     CASE(GGML_TYPE_Q5_K, 256, 2, 64,   8, GGML_CUDA_MMQ_SRAM_LAYOUT_Q8_1, MMQ_ITER_K, false, true);
+     CASE(GGML_TYPE_Q5_K, 256, 2, 64,  16, GGML_CUDA_MMQ_SRAM_LAYOUT_Q8_1, MMQ_ITER_K, false, true);
+     CASE(GGML_TYPE_Q5_K, 256, 2, 64,  32, GGML_CUDA_MMQ_SRAM_LAYOUT_Q8_1, MMQ_ITER_K, false, true);
+     CASE(GGML_TYPE_Q5_K, 256, 2, 64,  64, GGML_CUDA_MMQ_SRAM_LAYOUT_Q8_1, MMQ_ITER_K, false, true);
++    CASE(GGML_TYPE_Q5_K, 256, 2, 64, 128, GGML_CUDA_MMQ_SRAM_LAYOUT_Q8_1, MMQ_ITER_K, false, true); // p104 c7b
+     CASE(GGML_TYPE_Q5_K, 256, 2, 64,   8, GGML_CUDA_MMQ_SRAM_LAYOUT_Q8_1, MMQ_ITER_K, false, false);
+     CASE(GGML_TYPE_Q5_K, 256, 2, 64,  16, GGML_CUDA_MMQ_SRAM_LAYOUT_Q8_1, MMQ_ITER_K, false, false);
+     CASE(GGML_TYPE_Q5_K, 256, 2, 64,  24, GGML_CUDA_MMQ_SRAM_LAYOUT_Q8_1, MMQ_ITER_K, false, false);
+@@ -132,11 +135,13 @@ static constexpr __host__ __device__ ggml_cuda_mmq_config ggml_cuda_mmq_get_conf
+     CASE(GGML_TYPE_Q5_K, 256, 2, 64,  40, GGML_CUDA_MMQ_SRAM_LAYOUT_Q8_1, MMQ_ITER_K, false, false);
+     CASE(GGML_TYPE_Q5_K, 256, 2, 64,  48, GGML_CUDA_MMQ_SRAM_LAYOUT_Q8_1, MMQ_ITER_K, false, false);
+     CASE(GGML_TYPE_Q5_K, 256, 2, 64,  64, GGML_CUDA_MMQ_SRAM_LAYOUT_Q8_1, MMQ_ITER_K, false, false);
++    CASE(GGML_TYPE_Q5_K, 256, 2, 64, 128, GGML_CUDA_MMQ_SRAM_LAYOUT_Q8_1, MMQ_ITER_K, false, false); // p104 c7b
+ 
+     CASE(GGML_TYPE_Q6_K, 256, 2, 64,   8, GGML_CUDA_MMQ_SRAM_LAYOUT_Q6_K, MMQ_ITER_K, false, true);
+     CASE(GGML_TYPE_Q6_K, 256, 2, 64,  16, GGML_CUDA_MMQ_SRAM_LAYOUT_Q6_K, MMQ_ITER_K, false, true);
+     CASE(GGML_TYPE_Q6_K, 256, 2, 64,  32, GGML_CUDA_MMQ_SRAM_LAYOUT_Q6_K, MMQ_ITER_K, false, true);
+     CASE(GGML_TYPE_Q6_K, 256, 2, 64,  64, GGML_CUDA_MMQ_SRAM_LAYOUT_Q6_K, MMQ_ITER_K, false, true);
++    CASE(GGML_TYPE_Q6_K, 256, 2, 64, 128, GGML_CUDA_MMQ_SRAM_LAYOUT_Q6_K, MMQ_ITER_K, false, true); // p104 c7b
+     CASE(GGML_TYPE_Q6_K, 256, 2, 64,   8, GGML_CUDA_MMQ_SRAM_LAYOUT_Q6_K, MMQ_ITER_K, false, false);
+     CASE(GGML_TYPE_Q6_K, 256, 2, 64,  16, GGML_CUDA_MMQ_SRAM_LAYOUT_Q6_K, MMQ_ITER_K, false, false);
+     CASE(GGML_TYPE_Q6_K, 256, 2, 64,  24, GGML_CUDA_MMQ_SRAM_LAYOUT_Q6_K, MMQ_ITER_K, false, false);
+@@ -144,6 +149,7 @@ static constexpr __host__ __device__ ggml_cuda_mmq_config ggml_cuda_mmq_get_conf
+     CASE(GGML_TYPE_Q6_K, 256, 2, 64,  40, GGML_CUDA_MMQ_SRAM_LAYOUT_Q6_K, MMQ_ITER_K, false, false);
+     CASE(GGML_TYPE_Q6_K, 256, 2, 64,  48, GGML_CUDA_MMQ_SRAM_LAYOUT_Q6_K, MMQ_ITER_K, false, false);
+     CASE(GGML_TYPE_Q6_K, 256, 2, 64,  64, GGML_CUDA_MMQ_SRAM_LAYOUT_Q6_K, MMQ_ITER_K, false, false);
++    CASE(GGML_TYPE_Q6_K, 256, 2, 64, 128, GGML_CUDA_MMQ_SRAM_LAYOUT_Q6_K, MMQ_ITER_K, false, false); // p104 c7b
+ 
+ // ---------------------------------------------------------------------------------------------
+ 
+diff --git a/ggml/src/ggml-cuda/mmvq.cu b/ggml/src/ggml-cuda/mmvq.cu
+index 67d6cb4..116a120 100644
+--- a/ggml/src/ggml-cuda/mmvq.cu
++++ b/ggml/src/ggml-cuda/mmvq.cu
+@@ -1041,6 +1041,86 @@ static constexpr __host__ __device__ int calc_rows_per_block(ggml_type type, int
+     return 1;
+ }
+ 
++// p104 aveA: register-light column-outer fused k-loop for Q4_K on Pascal (ncols_dst 2..3, no fusion).
++// Loads rows_per_cuda_block weight rows once, then iterates columns loading each q8_1 block ONCE and sharing
++// sumi_m across all rows in the block without keeping d8/fsum_m arrays live across rows.
++template <int ncols_dst, int rows_per_cuda_block>
++static __device__ __forceinline__ void p104_mmvq_kloop_q4_col(
++        const void * __restrict__ vx, const block_q8_1 * __restrict__ y,
++        const int tid, const int blocks_per_row_x, const int blocks_per_iter,
++        const int kbx_offset, const int stride_row_x, const uint32_t stride_col_y,
++        float (&tmp)[ncols_dst][rows_per_cuda_block]) {
++    constexpr int qk = ggml_cuda_type_traits<GGML_TYPE_Q4_K>::qk;
++    constexpr int qi = ggml_cuda_type_traits<GGML_TYPE_Q4_K>::qi;
++    constexpr int vdr = 8;
++    const int kqs = vdr * (tid % (qi / vdr));
++    const int j_sub = kqs / 8;
++
++    for (int kbx = tid / (qi / vdr); kbx < blocks_per_row_x; kbx += blocks_per_iter) {
++        const int kby = kbx * (qk / QK8_1);
++
++        int   v[rows_per_cuda_block][8];
++        float wd[rows_per_cuda_block][2];
++        float wm[rows_per_cuda_block][2];
++
++#pragma unroll
++        for (int r = 0; r < rows_per_cuda_block; ++r) {
++            const int row_kbx = kbx_offset + r * stride_row_x + kbx;
++            const block_q4_K * bq = (const block_q4_K *) vx + row_kbx;
++            const int4 * q4 = (const int4 *) (bq->qs + 32 * j_sub);
++            const int4 v0 = __ldg(q4 + 0);
++            const int4 v1 = __ldg(q4 + 1);
++            v[r][0] = v0.x; v[r][1] = v0.y; v[r][2] = v0.z; v[r][3] = v0.w;
++            v[r][4] = v1.x; v[r][5] = v1.y; v[r][6] = v1.z; v[r][7] = v1.w;
++
++            const uint16_t * scales = (const uint16_t *) bq->scales;
++            const int jm = j_sub & 1;
++            const uint32_t s0 = __ldg(scales + jm + 0);
++            const uint32_t s2 = __ldg(scales + jm + 2);
++            const uint32_t s4 = __ldg(scales + jm + 4);
++            const uint32_t hi = (uint32_t) -(int32_t) (j_sub >= 2);
++            const uint32_t a0 = ((s0 & 0x3f3f) & ~hi) | ((((s4 >> 0) & 0x0f0f) | ((s0 & 0xc0c0) >> 2)) & hi);
++            const uint32_t a1 = ((s2 & 0x3f3f) & ~hi) | ((((s4 >> 4) & 0x0f0f) | ((s2 & 0xc0c0) >> 2)) & hi);
++            const float2 dmf = __half22float2(__ldg(&bq->dm));
++            wd[r][0] = dmf.x * (__int_as_float(P104_MMVQ_MAGIC_I | (a0 & 0xff)) - P104_MMVQ_MAGIC_F);
++            wd[r][1] = dmf.x * (__int_as_float(P104_MMVQ_MAGIC_I | ((a0 >> 8) & 0xff)) - P104_MMVQ_MAGIC_F);
++            wm[r][0] = dmf.y * (__int_as_float(P104_MMVQ_MAGIC_I | (a1 & 0xff)) - P104_MMVQ_MAGIC_F);
++            wm[r][1] = dmf.y * (__int_as_float(P104_MMVQ_MAGIC_I | ((a1 >> 8) & 0xff)) - P104_MMVQ_MAGIC_F);
++        }
++
++#pragma unroll
++        for (int c = 0; c < ncols_dst; ++c) {
++#pragma unroll
++            for (int i_sub = 0; i_sub < 2; ++i_sub) {
++                const block_q8_1 * bq8i = &y[c * stride_col_y + kby + 2 * j_sub + i_sub];
++                const int * q8 = (const int *) bq8i->qs;
++                int sumi_m = P104_MMVQ_MAGIC_I;
++                int sumi_d[rows_per_cuda_block];
++#pragma unroll
++                for (int r = 0; r < rows_per_cuda_block; ++r) {
++                    sumi_d[r] = P104_MMVQ_MAGIC_I;
++                }
++#pragma unroll
++                for (int l = 0; l < QI8_1; ++l) {
++                    const int u = __ldg(q8 + l);
++                    sumi_m = ggml_cuda_dp4a(0x01010101, u, sumi_m);
++#pragma unroll
++                    for (int r = 0; r < rows_per_cuda_block; ++r) {
++                        sumi_d[r] = ggml_cuda_dp4a((v[r][l] >> (4 * i_sub)) & 0x0F0F0F0F, u, sumi_d[r]);
++                    }
++                }
++                const float d8v = __low2float(__ldg(&bq8i->ds));
++                const float fm  = d8v * (__int_as_float(sumi_m) - P104_MMVQ_MAGIC_F);
++#pragma unroll
++                for (int r = 0; r < rows_per_cuda_block; ++r) {
++                    const float fd = __int_as_float(sumi_d[r]) - P104_MMVQ_MAGIC_F;
++                    tmp[c][r] = fmaf(fd, wd[r][i_sub] * d8v, fmaf(-wm[r][i_sub], fm, tmp[c][r]));
++                }
++            }
++        }
++    }
++}
++
+ // p104 k4: fused k-loop for Q4_K/Q5_K on Pascal (ncols_dst <= 3, no fusion).
+ // Computes exact q8_1 block sum sumi_m once per column (shared across rows_per_cuda_block),
+ // processes one weight row at a time to halve register pressure (Q4_K/Q5_K n=3),
+@@ -1279,7 +1359,10 @@ static __global__ void mul_mat_vec_q(
+     const block_q8_1 * y = ((const block_q8_1 *) vy) + sample_y*stride_sample_y + channel_y*stride_channel_y;
+     const int kbx_offset = sample_x*stride_sample_x + channel_x*stride_channel_x + row0*stride_row_x;
+ 
+-    if constexpr (table_id == MMVQ_PARAMETERS_PASCAL && !has_fusion && type == GGML_TYPE_Q5_K && ncols_dst <= P104_WIDE_MAX_NCOLS) {
++    if constexpr (table_id == MMVQ_PARAMETERS_PASCAL && !has_fusion && type == GGML_TYPE_Q4_K && ncols_dst == 3) {
++        p104_mmvq_kloop_q4_col<ncols_dst, rows_per_cuda_block>(
++            vx, y, tid, blocks_per_row_x, blocks_per_iter, kbx_offset, stride_row_x, stride_col_y, tmp);
++    } else if constexpr (table_id == MMVQ_PARAMETERS_PASCAL && !has_fusion && type == GGML_TYPE_Q5_K && ncols_dst <= P104_WIDE_MAX_NCOLS) {
+         p104_mmvq_kloop_q45<type, ncols_dst, rows_per_cuda_block>(
+             vx, y, tid, blocks_per_row_x, blocks_per_iter, kbx_offset, stride_row_x, stride_col_y, tmp);
+     } else {

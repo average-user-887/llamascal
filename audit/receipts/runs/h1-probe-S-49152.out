@@ -1,0 +1,39 @@
+
+==========
+== CUDA ==
+==========
+
+CUDA Version 12.9.1
+
+Container image Copyright (c) 2016-2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+
+This container image and its contents are governed by the NVIDIA Deep Learning Container License.
+By pulling and using the container, you accept the terms and conditions of this license:
+https://developer.nvidia.com/ngc/nvidia-deep-learning-container-license
+
+A copy of this license is made available in this container at /NGC-DL-CONTAINER-LICENSE for your convenience.
+
+0.00.053.502 I srv  llama_server: initializing ...
+0.00.053.533 I cmn  common_param: common_params_print_info: verbosity = 3 (adjust with the `-lv N` CLI arg)
+0.00.056.129 W srv  server_setup: security: no API key is set and CORS allows all origins (see https://github.com/ggml-org/llama.cpp/pull/25655)
+0.00.058.762 I srv    load_model: loading model '/models/experimental/qwen35-9b/Qwen3.5-9B-Q4_K_M.gguf'
+0.40.055.629 I cmn          init: llama threadpool init, n_threads = 4
+0.40.218.321 I srv    load_model: initializing, n_slots = 1, n_ctx_slot = 49152, kv_unified = 'false'
+0.40.238.882 I srv  server_run_i: model loaded
+0.40.241.690 I srv  server_on_li: listening on http://0.0.0.0:18321
+0.42.079.688 I slot       select: id  0 | task -1 | selected slot by LRU, n_tokens = 0, t_last = -1
+0.42.079.977 I slot launch_slot_: id  0 | task 0 | processing task, is_child = 0
+0.49.127.496 I slot print_timing: id  0 | task 0 | prompt processing, n_tokens =   4096, progress = 0.37, t =   7.05 s / 581.20 tokens per second
+0.53.442.259 I slot print_timing: id  0 | task 0 | prompt processing, n_tokens =   6144, progress = 0.56, t =  11.36 s / 540.74 tokens per second
+0.58.017.390 I slot print_timing: id  0 | task 0 | prompt processing, n_tokens =   8192, progress = 0.74, t =  15.94 s / 514.01 tokens per second
+1.02.833.420 I slot print_timing: id  0 | task 0 | prompt processing, n_tokens =  10240, progress = 0.93, t =  20.75 s / 493.41 tokens per second
+1.04.059.395 I slot print_timing: id  0 | task 0 | prompt processing, n_tokens =  10499, progress = 0.95, t =  21.98 s / 477.68 tokens per second
+1.04.929.233 I slot print_timing: id  0 | task 0 | prompt processing, n_tokens =  11011, progress = 1.00, t =  22.85 s / 481.90 tokens per second
+1.09.591.090 I slot print_timing: id  0 | task 0 | n_gen =    100, tg =  30.56 t/s, tg_3s =  30.86 t/s
+1.12.605.063 I slot print_timing: id  0 | task 0 | n_gen =    207, tg =  32.94 t/s, tg_3s =  35.50 t/s
+1.13.987.754 I slot print_timing: id  0 | task 0 | prompt eval time =   24271.11 ms / 11015 tokens (    2.20 ms per token,   453.83 tokens per second)
+1.13.987.758 I slot print_timing: id  0 | task 0 |        eval time =    7636.63 ms /   256 tokens (   29.95 ms per token,    33.39 tokens per second)
+1.13.987.759 I slot print_timing: id  0 | task 0 |       total time =   31907.74 ms / 11271 tokens
+1.13.987.765 I slot print_timing: id  0 | task 0 |    graphs reused =        253
+1.13.987.765 I slot print_timing: id  0 | task 0 |   graph reallocs =          0    /     0        (same size) / (changed size)
+1.13.988.353 I slot      release: id  0 | task 0 | stop processing: n_tokens = 11270, truncated = 0

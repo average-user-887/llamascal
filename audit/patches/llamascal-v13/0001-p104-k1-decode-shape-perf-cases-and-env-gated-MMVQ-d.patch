@@ -1,0 +1,74 @@
+From 283897bb78718024160a8a18cb7bb6769a2bd751 Mon Sep 17 00:00:00 2001
+From: p104-k1-builder <k1@z4-p104.local>
+Date: Mon, 23 Nov 2026 01:08:22 +0100
+Subject: [PATCH 01/17] p104 k1: decode-shape perf cases and env-gated MMVQ
+ dispatch trace
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ ggml/src/ggml-cuda/mmvq.cu | 13 +++++++++++++
+ tests/test-backend-ops.cpp | 10 ++++++++++
+ 2 files changed, 23 insertions(+)
+
+diff --git a/ggml/src/ggml-cuda/mmvq.cu b/ggml/src/ggml-cuda/mmvq.cu
+index 6f10428..58391fd 100644
+--- a/ggml/src/ggml-cuda/mmvq.cu
++++ b/ggml/src/ggml-cuda/mmvq.cu
+@@ -4,6 +4,8 @@
+ #include "vecdotq.cuh"
+ 
+ #include <cstdint>
++#include <cstdio>
++#include <cstdlib>
+ #include <type_traits>
+ 
+ // only enabled on DGX Spark, where it is a gain on every type below. On the higher-bandwidth parts the kernel
+@@ -1180,6 +1182,12 @@ static void mul_mat_vec_q_moe_launch(
+     }
+ }
+ 
++// p104 k1: dispatch trace, enabled by GGML_P104_MMVQ_LOG (attribution builds only)
++static bool p104_mmvq_log() {
++    static const bool enabled = getenv("GGML_P104_MMVQ_LOG") != nullptr;
++    return enabled;
++}
++
+ template <ggml_type type>
+ static void mul_mat_vec_q_switch_ncols_dst(
+         const void * vx, const void * vy, const int32_t * ids, const ggml_cuda_mm_fusion_args_device fusion, float * dst,
+@@ -1297,6 +1305,11 @@ static void mul_mat_vec_q_switch_ncols_dst(
+ 
+                 const std::pair<dim3, dim3> dims = calc_launch_params<type>(c_ncols_dst, nrows_x, nchannels_dst + (fusion.shared_up != nullptr),
+                                                                               nsamples_dst, warp_size, table_id, c_small_k, c_halve_iters);
++                if (p104_mmvq_log()) {
++                    fprintf(stderr, "p104mmvq type=%s k=%d m=%d ncols_dst=1 ids=%d gate=%d table=%d vdr=%d nwarps=%u grid=%u small_k=%d\n",
++                        ggml_type_name(type), ncols_x, nrows_x, ids != nullptr, fusion.gate != nullptr, (int) table_id,
++                        get_vdr_mmvq(type), dims.second.y, dims.first.x, (int) c_small_k);
++                }
+                 mul_mat_vec_q_switch_fusion<type, c_ncols_dst, c_small_k, c_halve_iters>(
+                     vx, vy, ids, fusion, dst, ncols_x, nchannels_y_fd, stride_row_x, stride_col_y, stride_col_dst,
+                     channel_ratio_fd, stride_channel_x, stride_channel_y, stride_channel_dst, sample_ratio_fd,
+diff --git a/tests/test-backend-ops.cpp b/tests/test-backend-ops.cpp
+index 91ff4c8..a2e4d2e 100644
+--- a/tests/test-backend-ops.cpp
++++ b/tests/test-backend-ops.cpp
+@@ -14189,6 +14189,16 @@ static std::vector<std::unique_ptr<test_case>> make_test_cases_perf() {
+         test_cases.emplace_back(new test_mul_mat(GGML_TYPE_Q4_K, GGML_TYPE_F32, 14336, n, 4096, {1, 1}, {1, 1}));
+     }
+ 
++    // p104 k1: decode shapes of Qwen3.5-9B Q4_K_M (m = rows, k = cols), n = 1
++    for (ggml_type t : {GGML_TYPE_Q4_K, GGML_TYPE_Q5_K, GGML_TYPE_Q6_K}) {
++        for (auto mk : std::vector<std::pair<int64_t, int64_t>>{{12288, 4096}, {4096, 12288}, {4096, 4096}, {8192, 4096}, {1024, 4096}, {248320, 4096}}) {
++            test_cases.emplace_back(new test_mul_mat(t, GGML_TYPE_F32, mk.first, 1, mk.second, {1, 1}, {1, 1}));
++        }
++    }
++    // p104 k1: fused gate/up + SWIGLU decode (ffn_gate/ffn_up 4096 -> 12288)
++    test_cases.emplace_back(new test_mul_mat_fusion(GGML_TYPE_Q4_K, GGML_GLU_OP_SWIGLU, 1, 12288, 4096,
++        false, 1, 1, false, false, true, false, {1, 1}));
++
+     // Q4_K multi-column mat-vec
+     for (int64_t m : {4096, 6144, 6272, 14336}) {
+         for (int bs : {1, 2, 3, 4, 8}) {
+-- 
+2.43.0
+

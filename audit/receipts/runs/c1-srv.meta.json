@@ -1,0 +1,13 @@
+{
+  "tag": "c1-srv",
+  "image": "p104-llama:a96dce0-20261123",
+  "container": "p104-c1-srv",
+  "cmd": "llama-server -m /models/experimental/qwen35-9b/Qwen3.5-9B-Q4_K_M.gguf --host 0.0.0.0 --port 18400 -ngl 99 -fa on -c 4096 -np 1 --no-warmup --jinja",
+  "start": "28, 139, 405, 9.05, 0, 5, Not Active, Not Active, Not Active, Not Active",
+  "end": "33, 1911, 5005, 51.72, 0, 5, Not Active, Not Active, Not Active, Not Active",
+  "max_temp": 34,
+  "trip": null,
+  "rc": 137,
+  "secs": 35,
+  "utc": "2026-11-23T13:41:10Z"
+}

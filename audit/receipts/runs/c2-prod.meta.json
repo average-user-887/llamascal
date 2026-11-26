@@ -1,0 +1,13 @@
+{
+  "tag": "c2-prod",
+  "image": "p104-llama:b098f6f-20261123",
+  "container": "p104-c2-prod",
+  "cmd": "llama-server -m /models/experimental/qwen35-9b/Qwen3.5-9B-Q4_K_M.gguf --alias qwen35-9b-q4km --host 0.0.0.0 --port 18400 --metrics --jinja -ngl 99 -fa on -c 24576 -np 2 -ctk f16 -ctv f16 -ub 512 -t 4 --no-warmup --cache-ram 1024",
+  "start": "45, 417, 405, 9.64, 0, 5, Not Active, Not Active, Not Active, Not Active",
+  "end": "48, 1885, 5005, 52.88, 0, 5, Not Active, Not Active, Not Active, Not Active",
+  "max_temp": 51,
+  "trip": null,
+  "rc": 0,
+  "secs": 645,
+  "utc": "2026-11-23T14:55:56Z"
+}

@@ -1,0 +1,13 @@
+{
+  "tag": "nq-abba-q3-d8192-B1",
+  "image": "p104-llama:b098f6f-20261123",
+  "container": "p104-nq-abba-q3-d8192-B1",
+  "cmd": "llama-bench -m /models/Qwen3-8B-Q4_K_M.gguf -ngl 99 -fa 1 -ctk f16 -ctv f16 -ub 512 -t 4 -p 512 -n 128 -d 0,8192 -r 3 -o jsonl",
+  "start": "43, 253, 405, 9.40, 0, 5, Not Active, Not Active, Not Active, Not Active",
+  "end": "50, 1873, 5005, 53.22, 0, 5, Not Active, Not Active, Not Active, Not Active",
+  "max_temp": 52,
+  "trip": null,
+  "rc": 0,
+  "secs": 82,
+  "utc": "2026-11-24T06:48:58Z"
+}

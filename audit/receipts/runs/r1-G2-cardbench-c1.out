@@ -1,0 +1,59 @@
+21:37:51 waiting for cpu-build.lock
+window open: p104-svc stopped, GPU memory used 5 MiB
+22:17:13 START cd-c1 B=~/p104-exp/v11-bin steps=,mtp,
+29, 5 MiB
+33, 142 MiB
+22:17:13 start cd-c1-mtp-A1 ~/p104-exp/v11-bin ~/models/experimental/qwen35-9b-mtp/Qwen3.5-9B-MTP-Q4_K_M.gguf ['--spec-type', 'draft-mtp', '--spec-draft-n-max', '2'] {}
+22:19:26 cd-c1-mtp-A1 client rc 0
+22:19:27 start cd-c1-mtp-B1 ~/p104-exp/v11-bin ~/models/experimental/qwen35-9b-mtp/Qwen3.5-9B-MTP-Q4_K_M.gguf ['--spec-type', 'draft-mtp', '--spec-draft-n-max', '2', '-bs'] {}
+22:21:42 cd-c1-mtp-B1 client rc 0
+22:21:44 start cd-c1-mtp-B2 ~/p104-exp/v11-bin ~/models/experimental/qwen35-9b-mtp/Qwen3.5-9B-MTP-Q4_K_M.gguf ['--spec-type', 'draft-mtp', '--spec-draft-n-max', '2', '-bs'] {}
+22:23:58 cd-c1-mtp-B2 client rc 0
+22:24:00 start cd-c1-mtp-A2 ~/p104-exp/v11-bin ~/models/experimental/qwen35-9b-mtp/Qwen3.5-9B-MTP-Q4_K_M.gguf ['--spec-type', 'draft-mtp', '--spec-draft-n-max', '2'] {}
+22:26:27 cd-c1-mtp-A2 client rc 0
+A1 all 37.76 agent 28.10 chat 43.20 code 47.44 copy 32.29 draft_acc 2136/2627
+A2 all 37.22 agent 27.59 chat 43.72 code 45.67 copy 31.90 draft_acc 2136/2627
+B1 all 39.73 agent 27.88 chat 46.65 code 50.69 copy 33.68 draft_acc 2136/2627
+B2 all 39.75 agent 27.85 chat 46.82 code 50.79 copy 33.55 draft_acc 2136/2627
+text identical across all arms: 16/16
+22:26:29 DONE ok
+56, 5 MiB
+41, 142 MiB
+22:26:29 DONE cd-c1
+window closed: p104-svc healthy
+G2A_RC=0
+22:27:01 waiting for cpu-build.lock
+window open: p104-svc stopped, GPU memory used 5 MiB
+22:27:39 START cd-c1S B=~/p104-exp/v11-bin steps=,mtp,
+48, 5 MiB
+41, 142 MiB
+22:27:39 start cd-c1S-mtp-A1 ~/p104-exp/v11-bin ~/models/experimental/qwen35-9b/Qwen3.5-9B-Q4_K_M.gguf [] {}
+22:30:21 cd-c1S-mtp-A1 client rc 0
+22:30:23 start cd-c1S-mtp-B1 ~/p104-exp/v11-bin ~/models/experimental/qwen35-9b/Qwen3.5-9B-Q4_K_M.gguf ['-bs'] {}
+22:32:59 cd-c1S-mtp-B1 client rc 0
+22:33:00 start cd-c1S-mtp-B2 ~/p104-exp/v11-bin ~/models/experimental/qwen35-9b/Qwen3.5-9B-Q4_K_M.gguf ['-bs'] {}
+22:35:58 cd-c1S-mtp-B2 client rc 0
+22:36:00 start cd-c1S-mtp-A2 ~/p104-exp/v11-bin ~/models/experimental/qwen35-9b/Qwen3.5-9B-Q4_K_M.gguf [] {}
+22:38:53 cd-c1S-mtp-A2 client rc 0
+A1 all 29.85 agent 22.57 chat 35.73 code 35.91 copy 25.19 draft_acc 0/0
+A2 all 30.04 agent 22.61 chat 36.31 code 36.02 copy 25.19 draft_acc 0/0
+B1 all 31.35 agent 22.63 chat 38.54 code 38.03 copy 26.19 draft_acc 0/0
+B2 all 31.12 agent 22.56 chat 37.73 code 37.99 copy 26.20 draft_acc 0/0
+text identical across all arms: 16/16
+22:38:54 DONE ok
+58, 5 MiB
+42, 142 MiB
+22:38:54 DONE cd-c1S
+window closed: p104-svc healthy
+G2B_RC=0
+A1 all 37.76 agent 28.10 chat 43.20 code 47.44 copy 32.29 draft_acc 2136/2627
+A2 all 37.22 agent 27.59 chat 43.72 code 45.67 copy 31.90 draft_acc 2136/2627
+B1 all 39.73 agent 27.88 chat 46.65 code 50.69 copy 33.68 draft_acc 2136/2627
+B2 all 39.75 agent 27.85 chat 46.82 code 50.79 copy 33.55 draft_acc 2136/2627
+text identical across all arms: 16/16
+A1 all 29.85 agent 22.57 chat 35.73 code 35.91 copy 25.19 draft_acc 0/0
+A2 all 30.04 agent 22.61 chat 36.31 code 36.02 copy 25.19 draft_acc 0/0
+B1 all 31.35 agent 22.63 chat 38.54 code 38.03 copy 26.19 draft_acc 0/0
+B2 all 31.12 agent 22.56 chat 37.73 code 37.99 copy 26.20 draft_acc 0/0
+text identical across all arms: 16/16
+G2_DONE

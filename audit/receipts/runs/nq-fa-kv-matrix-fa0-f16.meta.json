@@ -1,0 +1,13 @@
+{
+  "tag": "nq-fa-kv-matrix-fa0-f16",
+  "image": "p104-llama:b098f6f-20261123",
+  "container": "p104-nq-fa-kv-matrix-fa0-f16",
+  "cmd": "llama-bench -m /models/experimental/qwen35-9b/Qwen3.5-9B-Q4_K_M.gguf -ngl 99 -ub 512 -t 4 -p 512 -n 128 -d 8192,16384 -r 3 -fa 0 -ctk f16 -ctv f16 -o jsonl",
+  "start": "45, 139, 405, 9.64, 0, 5, Not Active, Not Active, Not Active, Not Active",
+  "end": "56, 1860, 5005, 53.56, 0, 5, Not Active, Not Active, Not Active, Not Active",
+  "max_temp": 57,
+  "trip": null,
+  "rc": 0,
+  "secs": 166,
+  "utc": "2026-11-24T09:22:36Z"
+}

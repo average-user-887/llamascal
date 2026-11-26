@@ -1,0 +1,13 @@
+{
+  "tag": "h1-probe-S-65536",
+  "image": "p104-llama:b098f6f-20261123",
+  "container": "p104-h1-probe-S-65536",
+  "cmd": "llama-server -m /models/experimental/qwen35-9b/Qwen3.5-9B-Q4_K_M.gguf -ngl 99 -c 65536 -np 1 -fa on -ctk f16 -ctv f16 -ub 512 -t 4 --jinja --host 0.0.0.0 --port 18321 --metrics --no-warmup --alias qwen35-9b",
+  "start": "42, 417, 405, 9.54, 0, 5, Not Active, Not Active, Not Active, Not Active",
+  "end": "48, 1885, 5005, 52.88, 0, 5, Not Active, Not Active, Not Active, Not Active",
+  "max_temp": 50,
+  "trip": null,
+  "rc": 137,
+  "secs": 62,
+  "utc": "2026-11-23T14:57:51Z"
+}

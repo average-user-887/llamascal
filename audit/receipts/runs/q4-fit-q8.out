@@ -1,0 +1,4 @@
+{"label": "q4-fit-q8", "mem_MiB_after_load": "5651"}
+{"label": "q4-fit-q8", "prompt_n": 8323, "pp_tps": 325.7, "tg_tps": 7.81, "n": 128}
+{"label": "q4-fit-q8", "prompt_n": 8522, "pp_tps": 343.4, "tg_tps": 21.99, "n": 128}
+{"label": "q4-fit-q8", "wall_s": 42.9, "peak_mem_MiB": 5675, "mem_after": "5675"}

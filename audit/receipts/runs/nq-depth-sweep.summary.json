@@ -1,0 +1,1 @@
+{"job": "depth-sweep", "verdict": "FAIL", "complete": true, "checks": 5, "failed": ["Qwen3.5-9B pp d0 no regression"], "headline": "Qwen3.5 d0 tg 38.67; Qwen3.5 d8192 tg 37.06; Qwen3.5 d16384 tg 35.14; Qwen3-8 d0 tg 45.05; Qwen3-8 d8192 tg 36.49", "missing": [], "utc": "2026-11-24T07:09:21Z", "image": "p104-llama:b098f6f-20261123"}

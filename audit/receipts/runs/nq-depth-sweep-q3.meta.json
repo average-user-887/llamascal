@@ -1,0 +1,13 @@
+{
+  "tag": "nq-depth-sweep-q3",
+  "image": "p104-llama:b098f6f-20261123",
+  "container": "p104-nq-depth-sweep-q3",
+  "cmd": "llama-bench -m /models/Qwen3-8B-Q4_K_M.gguf -ngl 99 -fa 1 -ctk f16 -ctv f16 -ub 512 -t 4 -p 512 -n 128 -d 0,2048,4096,8192 -r 3 -o jsonl",
+  "start": "45, 139, 405, 9.64, 0, 5, Not Active, Not Active, Not Active, Not Active",
+  "end": "54, 1873, 5005, 53.70, 0, 5, Not Active, Not Active, Not Active, Not Active",
+  "max_temp": 56,
+  "trip": null,
+  "rc": 0,
+  "secs": 199,
+  "utc": "2026-11-24T07:09:21Z"
+}

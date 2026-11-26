@@ -1,0 +1,23 @@
+
+==========
+== CUDA ==
+==========
+
+CUDA Version 12.9.1
+
+Container image Copyright (c) 2016-2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+
+This container image and its contents are governed by the NVIDIA Deep Learning Container License.
+By pulling and using the container, you accept the terms and conditions of this license:
+https://developer.nvidia.com/ngc/nvidia-deep-learning-container-license
+
+A copy of this license is made available in this container at /NGC-DL-CONTAINER-LICENSE for your convenience.
+
+ggml_cuda_init: found 1 CUDA devices (Total VRAM: 8109 MiB):
+  Device 0: NVIDIA P104-100, compute capability 6.1, VMM: yes, VRAM: 8109 MiB
+| model                          |       size |     params | backend    | ngl |  fa |            test |                  t/s |
+| ------------------------------ | ---------: | ---------: | ---------- | --: | --: | --------------: | -------------------: |
+| qwen35 9B Q4_K - Medium        |   5.28 GiB |     8.95 B | CUDA       |  99 |   1 |           pp512 |        537.92 ± 0.34 |
+| qwen35 9B Q4_K - Medium        |   5.28 GiB |     8.95 B | CUDA       |  99 |   1 |           tg128 |         38.62 ± 0.01 |
+
+build: a96dce07926e02afca8aa696cc088cfb8d055216 (0)

@@ -1,0 +1,23 @@
+Here is a clear explanation of the differences between TCP and UDP, tailored for a junior developer.
+
+### The Core Difference: Reliability vs. Speed
+
+Think of **TCP (Transmission Control Protocol)** as a **registered letter**.
+*   It guarantees delivery.
+*   It checks if the letter arrived.
+*   If it didn't, it resends it.
+*   It ensures the letters arrive in the correct order.
+*   *Trade-off:* This makes it slower because of all the checking and waiting.
+
+Think of **UDP (User Datagram Protocol)** as **shouting across a crowded room**.
+*   You shout a message and hope someone hears it.
+*   You don't wait for a reply to confirm they heard it.
+*   If you shout twice, the second shout might arrive before the first one (or the first one might get lost).
+*   *Trade-off:* This makes it incredibly fast because there is no waiting or checking.
+
+---
+
+### When to Use Each
+
+#### 1. Use TCP when data integrity is critical.
+You need to ensure that every single byte of data arrives exactly as sent, in the correct order. If a packet is lost, the connection must wait for it

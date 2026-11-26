@@ -1,0 +1,11 @@
+0.19.271.845 I cmn          init: llama threadpool init, n_threads = 4
+0.19.453.757 I 
+0.19.453.903 I system_info: n_threads = 4 (n_threads_batch = 4) / 8 | CUDA : ARCHS = 610 | USE_GRAPHS = 1 | FA_QUANTS = q4_0-q4_0,q8_0-q8_0,f16-f16,bf16-bf16,f8_e4m3-f8_e4m3 | CPU : SSE3 = 1 | SSSE3 = 1 | AVX = 1 | AVX2 = 1 | F16C = 1 | FMA = 1 | BMI2 = 1 | AVX512 = 1 | LLAMAFILE = 1 | OPENMP = 1 | REPACK = 1 | 
+0.19.454.463 I perplexity: saving all logits to ~/p104-bench/data/k2-ub3-base.logits
+0.19.454.475 I perplexity: tokenizing the input ..
+0.20.083.611 I perplexity: tokenization took 629.127 ms
+0.20.083.725 I perplexity: calculating perplexity over 5 chunks, n_ctx=1024, batch_size=1024, n_seq=1
+0.36.970.709 I perplexity: 15.71 seconds per pass - ETA 1.30 minutes
+[1]4.3613,[2]6.2703,[3]7.3722,[4]7.9455,[5]8.5982,
+1.34.351.786 I Final estimate: PPL = 8.5982 +/- 0.44053
+

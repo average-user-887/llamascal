@@ -1,0 +1,13 @@
+{
+  "tag": "c1-chk1",
+  "image": "p104-llama:a96dce0-20261123",
+  "container": "p104-c1-chk1",
+  "cmd": "sh -c nvidia-smi -L; touch /app/x 2>&1; touch /tmp/x; echo tmpwrite=$?; cp /app/llama-bench /tmp/lb; /tmp/lb --version 2>&1 | head -1; sleep 8",
+  "start": "28, 139, 405, 9.06, 0, 5, Not Active, Not Active, Not Active, Not Active",
+  "end": "28, 139, 405, 8.72, 0, 5, Not Active, Not Active, Not Active, Not Active",
+  "max_temp": 28,
+  "trip": null,
+  "rc": 0,
+  "secs": 10,
+  "utc": "2026-11-23T13:37:56Z"
+}

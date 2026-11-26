@@ -1,0 +1,113 @@
+From 804d7e68b58f4fba390b0725e4d6ae70b050a182 Mon Sep 17 00:00:00 2001
+From: p104-k1-builder <k1@z4-p104.local>
+Date: Mon, 23 Nov 2026 01:37:21 +0100
+Subject: [PATCH 03/17] p104 k1 v2: wide Q5_K mat-vec on Pascal too, 4 rows per
+ block (nwarps 2)
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ ggml/src/ggml-cuda/mmvq.cu | 73 ++++++++++++++++++++++++++++++++++++--
+ 1 file changed, 70 insertions(+), 3 deletions(-)
+
+diff --git a/ggml/src/ggml-cuda/mmvq.cu b/ggml/src/ggml-cuda/mmvq.cu
+index 2822368..e83aad5 100644
+--- a/ggml/src/ggml-cuda/mmvq.cu
++++ b/ggml/src/ggml-cuda/mmvq.cu
+@@ -157,16 +157,76 @@ static __device__ __forceinline__ float vec_dot_q4_K_q8_1_wide(
+     return dm4f.x*sumf_d - dm4f.y*sumf_m;
+ }
+ 
++// p104 k1: Q5_K variant of vec_dot_q4_K_q8_1_wide, the 5th bit of the 32 values comes from all 32 qh bytes.
++static __device__ __forceinline__ float vec_dot_q5_K_q8_1_wide(
++    const void * __restrict__ vbq, const block_q8_1 * __restrict__ bq8_1, const int & kbx, const int & iqs) {
++
++    const block_q5_K * bq5_K = (const block_q5_K *) vbq + kbx;
++    const int j = iqs / 8;
++
++    const int4 * q5 = (const int4 *) (bq5_K->qs + 32*j);
++    const int4 * qh = (const int4 *) bq5_K->qh;
++    const int4 v0 = q5[0];
++    const int4 v1 = q5[1];
++    const int4 h0 = qh[0];
++    const int4 h1 = qh[1];
++    const int v[8]  = {v0.x, v0.y, v0.z, v0.w, v1.x, v1.y, v1.z, v1.w};
++    const int vh[8] = {h0.x >> (2*j), h0.y >> (2*j), h0.z >> (2*j), h0.w >> (2*j),
++                       h1.x >> (2*j), h1.y >> (2*j), h1.z >> (2*j), h1.w >> (2*j)};
++
++    const uint16_t * scales = (const uint16_t *)bq5_K->scales;
++    const int jm = j & 1;
++
++    const uint32_t s0 = scales[jm + 0];
++    const uint32_t s2 = scales[jm + 2];
++    const uint32_t s4 = scales[jm + 4];
++
++    const uint32_t hi = (uint32_t) -(int32_t) (j >= 2);
++
++    uint16_t aux[2];
++    aux[0] = (uint16_t) (((s0 & 0x3f3f) & ~hi) | ((((s4 >> 0) & 0x0f0f) | ((s0 & 0xc0c0) >> 2)) & hi));
++    aux[1] = (uint16_t) (((s2 & 0x3f3f) & ~hi) | ((((s4 >> 4) & 0x0f0f) | ((s2 & 0xc0c0) >> 2)) & hi));
++    const uint8_t * sc = (const uint8_t *)aux;
++    const uint8_t * m  = sc + 2;
++
++    float sumf_d = 0.0f;
++    float sumf_m = 0.0f;
++
++#pragma unroll
++    for (int i = 0; i < QR5_K; ++i) {
++        const block_q8_1 * bq8i = bq8_1 + 2*j + i;
++        const int * q8 = (const int *) bq8i->qs;
++
++        int sumi_d = 0;
++        int sumi_m = 0;
++#pragma unroll
++        for (int l = 0; l < QI8_1; ++l) {
++            const int u = q8[l];
++            const int vl = ((v[l] >> (4*i)) & 0x0F0F0F0F) | ((vh[l] << (4 - i)) & 0x10101010);
++            sumi_d = ggml_cuda_dp4a(vl, u, sumi_d);
++            sumi_m = ggml_cuda_dp4a(0x01010101, u, sumi_m);
++        }
++
++        const float d8 = __low2float(bq8i->ds);
++        sumf_d += d8 * (sc[i] * sumi_d);
++        sumf_m += d8 * (sumi_m * m[i]);
++    }
++
++    const float2 dm5f = __half22float2(bq5_K->dm);
++
++    return dm5f.x*sumf_d - dm5f.y*sumf_m;
++}
++
+ // p104 k1: on Pascal (sm_61) the K-quant mat-vec is latency bound with 8 weight bytes per thread.
+ // Wide variant: each thread handles a whole 32-byte quant run (two 16-byte loads) of one sub-block pair.
+ #ifndef P104_NW
+ #define P104_NW 2
+ #endif
+ #ifndef P104_RPB
+-#define P104_RPB 1
++#define P104_RPB 4
+ #endif
+ static constexpr __host__ __device__ bool mmvq_pascal_wide(ggml_type type) {
+-    return type == GGML_TYPE_Q4_K;
++    return type == GGML_TYPE_Q4_K || type == GGML_TYPE_Q5_K;
+ }
+ 
+ enum mmvq_parameter_table_id {
+@@ -557,7 +617,14 @@ static constexpr __host__ __device__ int get_vdr_mmvq_tbl(ggml_type type, mmvq_p
+ }
+ 
+ static constexpr __device__ vec_dot_q_cuda_t get_vec_dot_q_cuda_tbl(ggml_type type, mmvq_parameter_table_id table_id) {
+-    return table_id == MMVQ_PARAMETERS_PASCAL && type == GGML_TYPE_Q4_K ? vec_dot_q4_K_q8_1_wide : get_vec_dot_q_cuda(type);
++    if (table_id == MMVQ_PARAMETERS_PASCAL) {
++        switch (type) {
++            case GGML_TYPE_Q4_K: return vec_dot_q4_K_q8_1_wide;
++            case GGML_TYPE_Q5_K: return vec_dot_q5_K_q8_1_wide;
++            default: break;
++        }
++    }
++    return get_vec_dot_q_cuda(type);
+ }
+ 
+ static constexpr __host__ __device__ int calc_nwarps(ggml_type type, int ncols_dst, mmvq_parameter_table_id table_id, bool small_k = false, bool halve_iters = false) {
+-- 
+2.43.0
+

@@ -1,0 +1,243 @@
+t,temperature.gpu,clocks.sm,clocks.mem,power.draw,utilization.gpu,memory.used,clocks_event_reasons.hw_thermal_slowdown,clocks_event_reasons.sw_thermal_slowdown,clocks_event_reasons.hw_slowdown,clocks_event_reasons.sw_power_cap
+0.1,45, 139, 405, 9.64, 0, 5, Not Active, Not Active, Not Active, Not Active
+0.6,45, 139, 405, 9.54, 0, 5, Not Active, Not Active, Not Active, Not Active
+1.2,45, 139, 405, 9.73, 0, 5, Not Active, Not Active, Not Active, Not Active
+1.7,45, 139, 405, 9.64, 0, 7, Not Active, Not Active, Not Active, Not Active
+2.3,46, 1607, 5005, 42.99, 0, 91, Not Active, Not Active, Not Active, Not Active
+2.8,46, 1607, 5005, 42.99, 0, 91, Not Active, Not Active, Not Active, Not Active
+3.4,46, 1607, 5005, 42.99, 0, 91, Not Active, Not Active, Not Active, Not Active
+3.9,46, 1607, 5005, 42.99, 0, 91, Not Active, Not Active, Not Active, Not Active
+4.5,46, 1607, 5005, 42.99, 0, 91, Not Active, Not Active, Not Active, Not Active
+5.1,46, 1607, 5005, 42.99, 0, 91, Not Active, Not Active, Not Active, Not Active
+5.6,46, 1607, 5005, 42.99, 0, 91, Not Active, Not Active, Not Active, Not Active
+6.2,46, 1607, 5005, 42.99, 0, 91, Not Active, Not Active, Not Active, Not Active
+6.7,46, 1607, 5005, 42.98, 0, 91, Not Active, Not Active, Not Active, Not Active
+7.3,46, 1607, 5005, 42.99, 0, 91, Not Active, Not Active, Not Active, Not Active
+7.8,46, 1607, 5005, 42.99, 0, 91, Not Active, Not Active, Not Active, Not Active
+8.4,46, 1607, 5005, 42.98, 0, 91, Not Active, Not Active, Not Active, Not Active
+9.0,46, 1607, 5005, 42.99, 0, 91, Not Active, Not Active, Not Active, Not Active
+9.5,46, 1607, 5005, 42.99, 0, 91, Not Active, Not Active, Not Active, Not Active
+10.1,46, 1607, 5005, 42.99, 0, 91, Not Active, Not Active, Not Active, Not Active
+10.6,46, 1607, 5005, 42.97, 0, 91, Not Active, Not Active, Not Active, Not Active
+11.2,46, 1607, 5005, 42.98, 0, 91, Not Active, Not Active, Not Active, Not Active
+11.7,46, 1607, 5005, 42.98, 0, 91, Not Active, Not Active, Not Active, Not Active
+12.3,46, 1607, 5005, 42.99, 0, 91, Not Active, Not Active, Not Active, Not Active
+12.9,46, 1607, 5005, 42.98, 0, 91, Not Active, Not Active, Not Active, Not Active
+13.4,46, 1607, 5005, 42.99, 0, 91, Not Active, Not Active, Not Active, Not Active
+14.0,46, 1607, 5005, 42.99, 0, 91, Not Active, Not Active, Not Active, Not Active
+14.6,46, 1607, 5005, 42.97, 0, 91, Not Active, Not Active, Not Active, Not Active
+15.1,46, 1607, 5005, 42.99, 0, 91, Not Active, Not Active, Not Active, Not Active
+15.7,46, 1607, 5005, 42.99, 0, 91, Not Active, Not Active, Not Active, Not Active
+16.2,46, 1607, 5005, 42.99, 0, 91, Not Active, Not Active, Not Active, Not Active
+16.8,46, 1607, 5005, 42.98, 0, 91, Not Active, Not Active, Not Active, Not Active
+17.3,46, 1607, 5005, 42.98, 0, 91, Not Active, Not Active, Not Active, Not Active
+17.9,46, 1607, 5005, 42.99, 0, 91, Not Active, Not Active, Not Active, Not Active
+18.4,46, 1607, 5005, 42.99, 30, 5133, Not Active, Not Active, Not Active, Not Active
+19.0,46, 1771, 5005, 47.58, 33, 5133, Not Active, Not Active, Not Active, Not Active
+19.6,46, 1885, 5005, 53.36, 43, 5133, Not Active, Not Active, Not Active, Not Active
+20.1,47, 1885, 5005, 53.34, 43, 5133, Not Active, Not Active, Not Active, Not Active
+20.7,46, 1885, 5005, 53.34, 44, 5133, Not Active, Not Active, Not Active, Not Active
+21.2,47, 1885, 5005, 53.34, 45, 5133, Not Active, Not Active, Not Active, Not Active
+21.8,47, 1885, 5005, 53.36, 51, 5133, Not Active, Not Active, Not Active, Not Active
+22.3,47, 1885, 5005, 53.34, 41, 5133, Not Active, Not Active, Not Active, Not Active
+22.9,47, 1885, 5005, 53.36, 33, 5133, Not Active, Not Active, Not Active, Not Active
+23.5,47, 1885, 5005, 53.36, 32, 5133, Not Active, Not Active, Not Active, Not Active
+24.0,47, 1885, 5005, 53.36, 35, 5133, Not Active, Not Active, Not Active, Not Active
+24.6,46, 1885, 5005, 53.36, 33, 5133, Not Active, Not Active, Not Active, Not Active
+25.1,47, 1885, 5005, 53.36, 32, 5133, Not Active, Not Active, Not Active, Not Active
+25.7,46, 1885, 5005, 53.34, 52, 5133, Not Active, Not Active, Not Active, Not Active
+26.2,47, 1885, 5005, 53.44, 80, 5133, Not Active, Not Active, Not Active, Not Active
+26.8,46, 1885, 5005, 53.34, 62, 5133, Not Active, Not Active, Not Active, Not Active
+27.3,46, 1885, 5005, 53.36, 46, 5133, Not Active, Not Active, Not Active, Not Active
+27.9,46, 1885, 5005, 53.34, 37, 5133, Not Active, Not Active, Not Active, Not Active
+28.4,46, 1885, 5005, 53.36, 58, 5133, Not Active, Not Active, Not Active, Not Active
+29.0,46, 1885, 5005, 53.34, 52, 5133, Not Active, Not Active, Not Active, Not Active
+29.6,46, 1885, 5005, 53.58, 99, 5133, Not Active, Not Active, Not Active, Not Active
+30.1,46, 1885, 5005, 53.58, 96, 5133, Not Active, Not Active, Not Active, Not Active
+30.7,47, 1885, 5005, 53.68, 94, 5133, Not Active, Not Active, Not Active, Not Active
+31.2,46, 1885, 5005, 53.68, 4, 7255, Not Active, Not Active, Not Active, Not Active
+31.8,46, 1885, 5005, 53.12, 0, 7255, Not Active, Not Active, Not Active, Not Active
+32.3,46, 1885, 5005, 53.12, 0, 7255, Not Active, Not Active, Not Active, Not Active
+32.9,46, 1885, 5005, 53.12, 0, 7255, Not Active, Not Active, Not Active, Not Active
+33.5,46, 1885, 5005, 55.15, 3, 7257, Not Active, Not Active, Not Active, Not Active
+34.0,47, 1746, 5005, 136.31, 71, 7275, Not Active, Not Active, Not Active, Not Active
+34.6,48, 1771, 5005, 125.75, 94, 7275, Not Active, Not Active, Not Active, Active
+35.1,48, 1721, 5005, 134.52, 94, 7275, Not Active, Not Active, Not Active, Not Active
+35.7,48, 1721, 5005, 122.59, 93, 7275, Not Active, Not Active, Not Active, Active
+36.2,49, 1708, 5005, 124.86, 93, 7275, Not Active, Not Active, Not Active, Active
+36.8,49, 1733, 5005, 134.37, 95, 7275, Not Active, Not Active, Not Active, Active
+37.4,49, 1771, 5005, 135.85, 94, 7275, Not Active, Not Active, Not Active, Not Active
+37.9,49, 1708, 5005, 133.82, 95, 7275, Not Active, Not Active, Not Active, Not Active
+38.5,49, 1771, 5005, 131.26, 96, 7275, Not Active, Not Active, Not Active, Active
+39.0,49, 1759, 5005, 136.65, 94, 7275, Not Active, Not Active, Not Active, Not Active
+39.6,49, 1873, 5005, 53.05, 72, 7275, Not Active, Not Active, Not Active, Not Active
+40.1,49, 1746, 5005, 135.33, 95, 7275, Not Active, Not Active, Not Active, Not Active
+40.7,49, 1771, 5005, 130.96, 96, 7275, Not Active, Not Active, Not Active, Active
+41.2,49, 1771, 5005, 133.30, 96, 7275, Not Active, Not Active, Not Active, Active
+41.8,49, 1721, 5005, 134.32, 97, 7275, Not Active, Not Active, Not Active, Not Active
+42.3,50, 1708, 5005, 128.80, 96, 7275, Not Active, Not Active, Not Active, Not Active
+42.9,50, 1733, 5005, 129.60, 97, 7275, Not Active, Not Active, Not Active, Not Active
+43.5,50, 1771, 5005, 133.07, 95, 7275, Not Active, Not Active, Not Active, Active
+44.0,50, 1721, 5005, 142.35, 97, 7275, Not Active, Not Active, Not Active, Active
+44.6,50, 1784, 5005, 143.03, 96, 7275, Not Active, Not Active, Not Active, Not Active
+45.1,50, 1708, 5005, 125.67, 97, 7275, Not Active, Not Active, Not Active, Not Active
+45.7,50, 1645, 5005, 108.13, 88, 7279, Not Active, Not Active, Not Active, Not Active
+46.2,50, 1797, 5005, 148.26, 94, 7279, Not Active, Not Active, Not Active, Not Active
+46.8,50, 1708, 5005, 133.87, 96, 7279, Not Active, Not Active, Not Active, Active
+47.4,50, 1771, 5005, 150.47, 95, 7279, Not Active, Not Active, Not Active, Active
+47.9,50, 1721, 5005, 135.90, 97, 7279, Not Active, Not Active, Not Active, Not Active
+48.5,50, 1721, 5005, 127.37, 93, 7279, Not Active, Not Active, Not Active, Not Active
+49.0,50, 1759, 5005, 146.12, 95, 7279, Not Active, Not Active, Not Active, Active
+49.6,50, 1733, 5005, 133.01, 94, 7279, Not Active, Not Active, Not Active, Active
+50.2,50, 1771, 5005, 130.34, 96, 7279, Not Active, Not Active, Not Active, Active
+50.7,51, 1759, 5005, 139.63, 94, 7279, Not Active, Not Active, Not Active, Not Active
+51.3,50, 1885, 5005, 65.44, 76, 7279, Not Active, Not Active, Not Active, Not Active
+51.8,51, 1771, 5005, 139.82, 92, 7279, Not Active, Not Active, Not Active, Not Active
+52.4,51, 1695, 5005, 137.53, 95, 7279, Not Active, Not Active, Not Active, Not Active
+52.9,51, 1771, 5005, 136.92, 96, 7279, Not Active, Not Active, Not Active, Not Active
+53.5,51, 1708, 5005, 119.81, 95, 7279, Not Active, Not Active, Not Active, Not Active
+54.0,51, 1771, 5005, 141.41, 95, 7279, Not Active, Not Active, Not Active, Not Active
+54.6,51, 1721, 5005, 129.10, 96, 7279, Not Active, Not Active, Not Active, Active
+55.1,51, 1771, 5005, 142.81, 95, 7279, Not Active, Not Active, Not Active, Not Active
+55.7,51, 1695, 5005, 119.58, 95, 7279, Not Active, Not Active, Not Active, Not Active
+56.3,51, 1708, 5005, 128.98, 93, 7279, Not Active, Not Active, Not Active, Not Active
+56.8,51, 1885, 5005, 54.36, 78, 7279, Not Active, Not Active, Not Active, Not Active
+57.4,51, 1759, 5005, 139.21, 94, 7279, Not Active, Not Active, Not Active, Not Active
+57.9,51, 1771, 5005, 149.11, 95, 7279, Not Active, Not Active, Not Active, Active
+58.5,51, 1759, 5005, 134.97, 95, 7279, Not Active, Not Active, Not Active, Not Active
+59.0,51, 1771, 5005, 132.34, 95, 7279, Not Active, Not Active, Not Active, Active
+59.6,52, 1759, 5005, 141.15, 95, 7279, Not Active, Not Active, Not Active, Not Active
+60.1,51, 1708, 5005, 125.52, 96, 7279, Not Active, Not Active, Not Active, Active
+60.7,52, 1771, 5005, 129.03, 96, 7279, Not Active, Not Active, Not Active, Active
+61.3,52, 1759, 5005, 145.27, 96, 7279, Not Active, Not Active, Not Active, Not Active
+61.8,52, 1721, 5005, 134.01, 95, 7279, Not Active, Not Active, Not Active, Active
+62.4,52, 1771, 5005, 125.83, 97, 7279, Not Active, Not Active, Not Active, Active
+62.9,51, 1759, 5005, 116.06, 94, 7279, Not Active, Not Active, Not Active, Not Active
+63.5,52, 1733, 5005, 133.34, 91, 7279, Not Active, Not Active, Not Active, Active
+64.0,52, 1746, 5005, 121.91, 95, 7279, Not Active, Not Active, Not Active, Active
+64.6,52, 1721, 5005, 135.81, 95, 7279, Not Active, Not Active, Not Active, Not Active
+65.2,52, 1733, 5005, 137.49, 96, 7279, Not Active, Not Active, Not Active, Not Active
+65.7,52, 1759, 5005, 138.43, 95, 7279, Not Active, Not Active, Not Active, Not Active
+66.3,52, 1733, 5005, 141.27, 96, 7279, Not Active, Not Active, Not Active, Not Active
+66.8,52, 1746, 5005, 137.87, 97, 7279, Not Active, Not Active, Not Active, Not Active
+67.4,52, 1771, 5005, 139.07, 96, 7279, Not Active, Not Active, Not Active, Active
+67.9,52, 1708, 5005, 133.30, 97, 7279, Not Active, Not Active, Not Active, Not Active
+68.5,52, 1620, 5005, 127.70, 93, 7279, Not Active, Not Active, Not Active, Not Active
+69.1,52, 1759, 5005, 138.17, 96, 7279, Not Active, Not Active, Not Active, Not Active
+69.6,52, 1721, 5005, 128.66, 97, 7279, Not Active, Not Active, Not Active, Not Active
+70.2,52, 1759, 5005, 132.07, 94, 7279, Not Active, Not Active, Not Active, Active
+70.7,52, 1708, 5005, 134.67, 97, 7279, Not Active, Not Active, Not Active, Not Active
+71.3,53, 1746, 5005, 138.87, 96, 7279, Not Active, Not Active, Not Active, Not Active
+71.8,53, 1721, 5005, 125.81, 96, 7279, Not Active, Not Active, Not Active, Not Active
+72.4,53, 1746, 5005, 139.34, 96, 7279, Not Active, Not Active, Not Active, Active
+72.9,53, 1746, 5005, 132.68, 96, 7279, Not Active, Not Active, Not Active, Not Active
+73.5,53, 1746, 5005, 144.23, 95, 7279, Not Active, Not Active, Not Active, Not Active
+74.1,53, 1607, 5005, 116.99, 78, 7279, Not Active, Not Active, Not Active, Not Active
+74.6,53, 1759, 5005, 143.28, 93, 7279, Not Active, Not Active, Not Active, Active
+75.2,53, 1759, 5005, 142.26, 96, 7279, Not Active, Not Active, Not Active, Not Active
+75.7,53, 1708, 5005, 120.38, 95, 7279, Not Active, Not Active, Not Active, Not Active
+76.3,53, 1759, 5005, 141.16, 95, 7279, Not Active, Not Active, Not Active, Not Active
+76.8,53, 1708, 5005, 126.38, 96, 7279, Not Active, Not Active, Not Active, Not Active
+77.4,53, 1733, 5005, 138.99, 96, 7279, Not Active, Not Active, Not Active, Not Active
+77.9,53, 1784, 5005, 136.05, 95, 7279, Not Active, Not Active, Not Active, Active
+78.5,53, 1733, 5005, 115.71, 94, 7279, Not Active, Not Active, Not Active, Active
+79.1,53, 1695, 5005, 130.51, 96, 7279, Not Active, Not Active, Not Active, Not Active
+79.6,53, 1695, 5005, 122.62, 95, 7279, Not Active, Not Active, Not Active, Not Active
+80.2,53, 1759, 5005, 133.13, 97, 7279, Not Active, Not Active, Not Active, Active
+80.7,53, 1746, 5005, 153.09, 97, 7279, Not Active, Not Active, Not Active, Active
+81.3,53, 1708, 5005, 134.06, 95, 7279, Not Active, Not Active, Not Active, Active
+81.9,54, 1708, 5005, 133.27, 97, 7279, Not Active, Not Active, Not Active, Not Active
+82.4,54, 1746, 5005, 138.96, 95, 7279, Not Active, Not Active, Not Active, Not Active
+83.0,54, 1746, 5005, 130.73, 96, 7279, Not Active, Not Active, Not Active, Not Active
+83.5,54, 1746, 5005, 131.17, 95, 7279, Not Active, Not Active, Not Active, Active
+84.1,54, 1708, 5005, 131.45, 94, 7279, Not Active, Not Active, Not Active, Not Active
+84.7,54, 1746, 5005, 130.16, 97, 7279, Not Active, Not Active, Not Active, Active
+85.2,54, 1822, 5005, 51.39, 89, 7279, Not Active, Not Active, Not Active, Not Active
+85.8,54, 1670, 5005, 139.77, 100, 7289, Not Active, Not Active, Not Active, Not Active
+86.3,54, 1670, 5005, 120.64, 100, 7299, Not Active, Not Active, Not Active, Not Active
+86.9,54, 1733, 5005, 132.25, 95, 7299, Not Active, Not Active, Not Active, Active
+87.4,54, 1733, 5005, 139.62, 96, 7299, Not Active, Not Active, Not Active, Not Active
+88.0,54, 1607, 5005, 124.67, 93, 7299, Not Active, Not Active, Not Active, Not Active
+88.5,54, 1670, 5005, 140.82, 100, 7299, Not Active, Not Active, Not Active, Not Active
+89.1,54, 1733, 5005, 48.92, 96, 7299, Not Active, Not Active, Not Active, Not Active
+89.6,54, 1733, 5005, 141.79, 96, 7299, Not Active, Not Active, Not Active, Not Active
+90.2,54, 1746, 5005, 139.49, 95, 7299, Not Active, Not Active, Not Active, Not Active
+90.7,55, 1721, 5005, 87.52, 84, 7299, Not Active, Not Active, Not Active, Active
+91.3,55, 1670, 5005, 140.18, 100, 7299, Not Active, Not Active, Not Active, Not Active
+91.9,55, 1645, 5005, 62.06, 100, 7299, Not Active, Not Active, Not Active, Not Active
+92.4,54, 1759, 5005, 137.53, 96, 7299, Not Active, Not Active, Not Active, Not Active
+93.0,54, 1708, 5005, 141.89, 95, 7299, Not Active, Not Active, Not Active, Not Active
+93.5,54, 1721, 5005, 135.10, 96, 7299, Not Active, Not Active, Not Active, Not Active
+94.1,55, 1733, 5005, 147.81, 96, 7299, Not Active, Not Active, Not Active, Not Active
+94.6,55, 1759, 5005, 141.44, 95, 7299, Not Active, Not Active, Not Active, Not Active
+95.2,55, 1620, 5005, 133.04, 94, 7299, Not Active, Not Active, Not Active, Not Active
+95.7,55, 1683, 5005, 146.62, 100, 7299, Not Active, Not Active, Not Active, Not Active
+96.3,55, 1733, 5005, 87.93, 97, 7299, Not Active, Not Active, Not Active, Not Active
+96.9,55, 1733, 5005, 138.26, 95, 7299, Not Active, Not Active, Not Active, Not Active
+97.4,55, 1771, 5005, 127.37, 95, 7299, Not Active, Not Active, Not Active, Not Active
+98.0,55, 1746, 5005, 140.36, 96, 7299, Not Active, Not Active, Not Active, Not Active
+98.5,55, 1695, 5005, 129.10, 96, 7299, Not Active, Not Active, Not Active, Active
+99.1,55, 1873, 5005, 51.79, 66, 7299, Not Active, Not Active, Not Active, Not Active
+99.6,55, 1670, 5005, 139.73, 100, 7309, Not Active, Not Active, Not Active, Not Active
+100.2,55, 1645, 5005, 124.98, 100, 7309, Not Active, Not Active, Not Active, Not Active
+100.7,56, 1670, 5005, 145.58, 100, 7309, Not Active, Not Active, Not Active, Active
+101.3,55, 1771, 5005, 50.51, 97, 7319, Not Active, Not Active, Not Active, Not Active
+101.9,56, 1670, 5005, 140.75, 100, 7319, Not Active, Not Active, Not Active, Not Active
+102.4,56, 1657, 5005, 124.18, 100, 7319, Not Active, Not Active, Not Active, Not Active
+103.0,55, 1733, 5005, 137.87, 96, 7319, Not Active, Not Active, Not Active, Not Active
+103.5,55, 1708, 5005, 125.73, 96, 7319, Not Active, Not Active, Not Active, Not Active
+104.1,55, 1733, 5005, 134.27, 97, 7319, Not Active, Not Active, Not Active, Not Active
+104.6,55, 1746, 5005, 129.03, 96, 7319, Not Active, Not Active, Not Active, Active
+105.2,55, 1708, 5005, 132.50, 96, 7319, Not Active, Not Active, Not Active, Not Active
+105.8,56, 1746, 5005, 134.90, 97, 7319, Not Active, Not Active, Not Active, Not Active
+106.3,55, 1759, 5005, 151.55, 94, 7319, Not Active, Not Active, Not Active, Active
+106.9,55, 1733, 5005, 136.98, 95, 7319, Not Active, Not Active, Not Active, Not Active
+107.4,55, 1733, 5005, 48.44, 96, 7319, Not Active, Not Active, Not Active, Not Active
+108.0,56, 1670, 5005, 140.45, 100, 7319, Not Active, Not Active, Not Active, Not Active
+108.5,56, 1657, 5005, 90.30, 100, 7319, Not Active, Not Active, Not Active, Not Active
+109.1,56, 1657, 5005, 136.29, 100, 7319, Not Active, Not Active, Not Active, Not Active
+109.7,56, 1822, 5005, 53.92, 97, 7319, Not Active, Not Active, Not Active, Not Active
+110.2,56, 1683, 5005, 140.88, 100, 7319, Not Active, Not Active, Not Active, Not Active
+110.8,56, 1657, 5005, 84.19, 100, 7319, Not Active, Not Active, Not Active, Not Active
+111.3,56, 1759, 5005, 128.90, 95, 7319, Not Active, Not Active, Not Active, Not Active
+111.9,56, 1759, 5005, 146.92, 95, 7319, Not Active, Not Active, Not Active, Active
+112.4,56, 1746, 5005, 131.50, 96, 7319, Not Active, Not Active, Not Active, Active
+113.0,56, 1708, 5005, 133.10, 96, 7319, Not Active, Not Active, Not Active, Not Active
+113.6,56, 1759, 5005, 135.33, 97, 7319, Not Active, Not Active, Not Active, Not Active
+114.1,56, 1746, 5005, 142.44, 96, 7319, Not Active, Not Active, Not Active, Not Active
+114.7,56, 1733, 5005, 129.24, 96, 7319, Not Active, Not Active, Not Active, Active
+115.2,56, 1721, 5005, 137.95, 95, 7319, Not Active, Not Active, Not Active, Not Active
+115.8,56, 1708, 5005, 123.45, 96, 7319, Not Active, Not Active, Not Active, Not Active
+116.3,56, 1620, 5005, 129.06, 94, 7319, Not Active, Not Active, Not Active, Not Active
+116.9,57, 1657, 5005, 130.07, 100, 7319, Not Active, Not Active, Not Active, Not Active
+117.5,57, 1657, 5005, 137.26, 100, 7319, Not Active, Not Active, Not Active, Active
+118.0,57, 1657, 5005, 133.07, 100, 7319, Not Active, Not Active, Not Active, Active
+118.6,57, 1657, 5005, 134.83, 100, 7319, Not Active, Not Active, Not Active, Not Active
+119.1,57, 1657, 5005, 139.35, 100, 7319, Not Active, Not Active, Not Active, Active
+119.7,57, 1733, 5005, 120.21, 96, 7319, Not Active, Not Active, Not Active, Active
+120.2,56, 1759, 5005, 137.98, 94, 7319, Not Active, Not Active, Not Active, Not Active
+120.8,57, 1708, 5005, 125.38, 95, 7319, Not Active, Not Active, Not Active, Not Active
+121.3,57, 1746, 5005, 142.66, 96, 7319, Not Active, Not Active, Not Active, Not Active
+121.9,57, 1733, 5005, 131.53, 96, 7319, Not Active, Not Active, Not Active, Active
+122.5,57, 1708, 5005, 133.63, 96, 7319, Not Active, Not Active, Not Active, Not Active
+123.0,57, 1708, 5005, 137.90, 94, 7319, Not Active, Not Active, Not Active, Not Active
+123.6,57, 1771, 5005, 127.18, 93, 7319, Not Active, Not Active, Not Active, Active
+124.1,57, 1771, 5005, 153.91, 96, 7319, Not Active, Not Active, Not Active, Active
+124.7,56, 1620, 5005, 132.07, 93, 7319, Not Active, Not Active, Not Active, Not Active
+125.3,57, 1657, 5005, 137.56, 100, 7319, Not Active, Not Active, Not Active, Not Active
+125.8,57, 1683, 5005, 142.66, 100, 7319, Not Active, Not Active, Not Active, Active
+126.4,57, 1657, 5005, 137.72, 100, 7319, Not Active, Not Active, Not Active, Active
+126.9,57, 1657, 5005, 122.01, 100, 7319, Not Active, Not Active, Not Active, Not Active
+127.5,58, 1657, 5005, 140.12, 100, 7319, Not Active, Not Active, Not Active, Active
+128.0,57, 1733, 5005, 130.67, 96, 7319, Not Active, Not Active, Not Active, Active
+128.6,57, 1708, 5005, 130.92, 96, 7319, Not Active, Not Active, Not Active, Not Active
+129.1,57, 1746, 5005, 144.61, 96, 7319, Not Active, Not Active, Not Active, Not Active
+129.7,57, 1733, 5005, 137.95, 96, 7319, Not Active, Not Active, Not Active, Not Active
+130.3,57, 1708, 5005, 117.05, 95, 7319, Not Active, Not Active, Not Active, Active
+130.8,57, 1721, 5005, 131.97, 95, 7319, Not Active, Not Active, Not Active, Active
+131.4,57, 1708, 5005, 140.85, 97, 7319, Not Active, Not Active, Not Active, Not Active
+131.9,57, 1733, 5005, 132.81, 96, 7319, Not Active, Not Active, Not Active, Not Active
+132.5,57, 1746, 5005, 143.33, 96, 7319, Not Active, Not Active, Not Active, Not Active
+133.0,56, 1860, 5005, 53.80, 99, 99, Not Active, Not Active, Not Active, Not Active
+133.6,56, 1860, 5005, 53.80, 0, 99, Not Active, Not Active, Not Active, Not Active
+134.1,56, 1860, 5005, 53.56, 1, 5, Not Active, Not Active, Not Active, Not Active

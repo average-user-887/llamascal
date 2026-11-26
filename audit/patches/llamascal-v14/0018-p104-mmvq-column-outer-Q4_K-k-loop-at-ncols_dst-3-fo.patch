@@ -1,0 +1,116 @@
+From baf7a5d9625e78a715ea5be068dc827c7b652ed9 Mon Sep 17 00:00:00 2001
+From: p104-builder-a <a@z4-p104.local>
+Date: Thu, 26 Nov 2026 14:17:08 +0100
+Subject: [PATCH 18/20] p104 mmvq: column-outer Q4_K k-loop at ncols_dst == 3
+ for Pascal
+
+---
+ ggml/src/ggml-cuda/mmvq.cu | 85 +++++++++++++++++++++++++++++++++++++-
+ 1 file changed, 84 insertions(+), 1 deletion(-)
+
+diff --git a/ggml/src/ggml-cuda/mmvq.cu b/ggml/src/ggml-cuda/mmvq.cu
+index 67d6cb4..116a120 100644
+--- a/ggml/src/ggml-cuda/mmvq.cu
++++ b/ggml/src/ggml-cuda/mmvq.cu
+@@ -1041,6 +1041,86 @@ static constexpr __host__ __device__ int calc_rows_per_block(ggml_type type, int
+     return 1;
+ }
+ 
++// p104 aveA: register-light column-outer fused k-loop for Q4_K on Pascal (ncols_dst 2..3, no fusion).
++// Loads rows_per_cuda_block weight rows once, then iterates columns loading each q8_1 block ONCE and sharing
++// sumi_m across all rows in the block without keeping d8/fsum_m arrays live across rows.
++template <int ncols_dst, int rows_per_cuda_block>
++static __device__ __forceinline__ void p104_mmvq_kloop_q4_col(
++        const void * __restrict__ vx, const block_q8_1 * __restrict__ y,
++        const int tid, const int blocks_per_row_x, const int blocks_per_iter,
++        const int kbx_offset, const int stride_row_x, const uint32_t stride_col_y,
++        float (&tmp)[ncols_dst][rows_per_cuda_block]) {
++    constexpr int qk = ggml_cuda_type_traits<GGML_TYPE_Q4_K>::qk;
++    constexpr int qi = ggml_cuda_type_traits<GGML_TYPE_Q4_K>::qi;
++    constexpr int vdr = 8;
++    const int kqs = vdr * (tid % (qi / vdr));
++    const int j_sub = kqs / 8;
++
++    for (int kbx = tid / (qi / vdr); kbx < blocks_per_row_x; kbx += blocks_per_iter) {
++        const int kby = kbx * (qk / QK8_1);
++
++        int   v[rows_per_cuda_block][8];
++        float wd[rows_per_cuda_block][2];
++        float wm[rows_per_cuda_block][2];
++
++#pragma unroll
++        for (int r = 0; r < rows_per_cuda_block; ++r) {
++            const int row_kbx = kbx_offset + r * stride_row_x + kbx;
++            const block_q4_K * bq = (const block_q4_K *) vx + row_kbx;
++            const int4 * q4 = (const int4 *) (bq->qs + 32 * j_sub);
++            const int4 v0 = __ldg(q4 + 0);
++            const int4 v1 = __ldg(q4 + 1);
++            v[r][0] = v0.x; v[r][1] = v0.y; v[r][2] = v0.z; v[r][3] = v0.w;
++            v[r][4] = v1.x; v[r][5] = v1.y; v[r][6] = v1.z; v[r][7] = v1.w;
++
++            const uint16_t * scales = (const uint16_t *) bq->scales;
++            const int jm = j_sub & 1;
++            const uint32_t s0 = __ldg(scales + jm + 0);
++            const uint32_t s2 = __ldg(scales + jm + 2);
++            const uint32_t s4 = __ldg(scales + jm + 4);
++            const uint32_t hi = (uint32_t) -(int32_t) (j_sub >= 2);
++            const uint32_t a0 = ((s0 & 0x3f3f) & ~hi) | ((((s4 >> 0) & 0x0f0f) | ((s0 & 0xc0c0) >> 2)) & hi);
++            const uint32_t a1 = ((s2 & 0x3f3f) & ~hi) | ((((s4 >> 4) & 0x0f0f) | ((s2 & 0xc0c0) >> 2)) & hi);
++            const float2 dmf = __half22float2(__ldg(&bq->dm));
++            wd[r][0] = dmf.x * (__int_as_float(P104_MMVQ_MAGIC_I | (a0 & 0xff)) - P104_MMVQ_MAGIC_F);
++            wd[r][1] = dmf.x * (__int_as_float(P104_MMVQ_MAGIC_I | ((a0 >> 8) & 0xff)) - P104_MMVQ_MAGIC_F);
++            wm[r][0] = dmf.y * (__int_as_float(P104_MMVQ_MAGIC_I | (a1 & 0xff)) - P104_MMVQ_MAGIC_F);
++            wm[r][1] = dmf.y * (__int_as_float(P104_MMVQ_MAGIC_I | ((a1 >> 8) & 0xff)) - P104_MMVQ_MAGIC_F);
++        }
++
++#pragma unroll
++        for (int c = 0; c < ncols_dst; ++c) {
++#pragma unroll
++            for (int i_sub = 0; i_sub < 2; ++i_sub) {
++                const block_q8_1 * bq8i = &y[c * stride_col_y + kby + 2 * j_sub + i_sub];
++                const int * q8 = (const int *) bq8i->qs;
++                int sumi_m = P104_MMVQ_MAGIC_I;
++                int sumi_d[rows_per_cuda_block];
++#pragma unroll
++                for (int r = 0; r < rows_per_cuda_block; ++r) {
++                    sumi_d[r] = P104_MMVQ_MAGIC_I;
++                }
++#pragma unroll
++                for (int l = 0; l < QI8_1; ++l) {
++                    const int u = __ldg(q8 + l);
++                    sumi_m = ggml_cuda_dp4a(0x01010101, u, sumi_m);
++#pragma unroll
++                    for (int r = 0; r < rows_per_cuda_block; ++r) {
++                        sumi_d[r] = ggml_cuda_dp4a((v[r][l] >> (4 * i_sub)) & 0x0F0F0F0F, u, sumi_d[r]);
++                    }
++                }
++                const float d8v = __low2float(__ldg(&bq8i->ds));
++                const float fm  = d8v * (__int_as_float(sumi_m) - P104_MMVQ_MAGIC_F);
++#pragma unroll
++                for (int r = 0; r < rows_per_cuda_block; ++r) {
++                    const float fd = __int_as_float(sumi_d[r]) - P104_MMVQ_MAGIC_F;
++                    tmp[c][r] = fmaf(fd, wd[r][i_sub] * d8v, fmaf(-wm[r][i_sub], fm, tmp[c][r]));
++                }
++            }
++        }
++    }
++}
++
+ // p104 k4: fused k-loop for Q4_K/Q5_K on Pascal (ncols_dst <= 3, no fusion).
+ // Computes exact q8_1 block sum sumi_m once per column (shared across rows_per_cuda_block),
+ // processes one weight row at a time to halve register pressure (Q4_K/Q5_K n=3),
+@@ -1279,7 +1359,10 @@ static __global__ void mul_mat_vec_q(
+     const block_q8_1 * y = ((const block_q8_1 *) vy) + sample_y*stride_sample_y + channel_y*stride_channel_y;
+     const int kbx_offset = sample_x*stride_sample_x + channel_x*stride_channel_x + row0*stride_row_x;
+ 
+-    if constexpr (table_id == MMVQ_PARAMETERS_PASCAL && !has_fusion && type == GGML_TYPE_Q5_K && ncols_dst <= P104_WIDE_MAX_NCOLS) {
++    if constexpr (table_id == MMVQ_PARAMETERS_PASCAL && !has_fusion && type == GGML_TYPE_Q4_K && ncols_dst == 3) {
++        p104_mmvq_kloop_q4_col<ncols_dst, rows_per_cuda_block>(
++            vx, y, tid, blocks_per_row_x, blocks_per_iter, kbx_offset, stride_row_x, stride_col_y, tmp);
++    } else if constexpr (table_id == MMVQ_PARAMETERS_PASCAL && !has_fusion && type == GGML_TYPE_Q5_K && ncols_dst <= P104_WIDE_MAX_NCOLS) {
+         p104_mmvq_kloop_q45<type, ncols_dst, rows_per_cuda_block>(
+             vx, y, tid, blocks_per_row_x, blocks_per_iter, kbx_offset, stride_row_x, stride_col_y, tmp);
+     } else {
+-- 
+2.43.0
+

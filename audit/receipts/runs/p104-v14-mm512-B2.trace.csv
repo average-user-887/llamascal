@@ -1,0 +1,20 @@
+t,temperature.gpu,clocks.sm,clocks.mem,power.draw,utilization.gpu,memory.used,clocks_event_reasons.hw_thermal_slowdown,clocks_event_reasons.sw_thermal_slowdown,clocks_event_reasons.hw_slowdown,clocks_event_reasons.sw_power_cap
+0.1,41,1695,5005,44.66,0,1,Not Active,Not Active,Not Active,Not Active
+0.6,41,1695,5005,44.66,0,155,Not Active,Not Active,Not Active,Not Active
+1.1,41,1695,5005,44.66,0,155,Not Active,Not Active,Not Active,Not Active
+1.7,41,1695,5005,44.66,0,155,Not Active,Not Active,Not Active,Not Active
+2.2,41,1695,5005,44.56,0,155,Not Active,Not Active,Not Active,Not Active
+2.7,41,1695,5005,44.56,0,155,Not Active,Not Active,Not Active,Not Active
+3.3,42,1771,5005,142.93,93,171,Not Active,Not Active,Not Active,Active
+3.8,44,1759,5005,144.55,100,171,Not Active,Not Active,Not Active,Active
+4.4,43,1733,5005,45.87,41,179,Not Active,Not Active,Not Active,Not Active
+4.9,42,1733,5005,45.77,0,179,Not Active,Not Active,Not Active,Not Active
+5.4,41,1733,5005,45.77,0,179,Not Active,Not Active,Not Active,Not Active
+6.0,41,1733,5005,45.87,0,179,Not Active,Not Active,Not Active,Not Active
+6.5,41,1733,5005,45.77,0,179,Not Active,Not Active,Not Active,Not Active
+7.1,41,1733,5005,45.77,0,179,Not Active,Not Active,Not Active,Not Active
+7.6,44,1784,5005,140.61,100,179,Not Active,Not Active,Not Active,Active
+8.2,44,1746,5005,80.27,100,185,Not Active,Not Active,Not Active,Not Active
+8.7,42,1746,5005,46.11,0,185,Not Active,Not Active,Not Active,Not Active
+9.2,43,1645,5005,131.12,49,185,Not Active,Not Active,Not Active,Not Active
+9.8,44,1695,5005,140.94,100,185,Not Active,Not Active,Not Active,Active

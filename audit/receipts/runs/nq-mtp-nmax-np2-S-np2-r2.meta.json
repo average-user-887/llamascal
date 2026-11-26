@@ -1,0 +1,13 @@
+{
+  "tag": "nq-mtp-nmax-np2-S-np2-r2",
+  "image": "p104-llama:b098f6f-20261123",
+  "container": "p104-nq-mtp-nmax-np2-S-np2-r2",
+  "cmd": "llama-server -m /models/experimental/qwen35-9b/Qwen3.5-9B-Q4_K_M.gguf --host 0.0.0.0 --port 18450 -ngl 99 -fa on -c 49152 -np 2 -ctk f16 -ctv f16 -ub 512 -t 4 --metrics --jinja --no-warmup --cache-ram 1024",
+  "start": "45, 139, 405, 9.54, 0, 5, Not Active, Not Active, Not Active, Not Active",
+  "end": "51, 1873, 5005, 53.22, 0, 5, Not Active, Not Active, Not Active, Not Active",
+  "max_temp": 53,
+  "trip": null,
+  "rc": 0,
+  "secs": 108,
+  "utc": "2026-11-24T09:01:06Z"
+}

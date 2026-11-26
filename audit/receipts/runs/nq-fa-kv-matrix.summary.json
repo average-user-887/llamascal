@@ -1,0 +1,1 @@
+{"job": "fa-kv-matrix", "verdict": "PASS", "complete": true, "checks": 4, "failed": [], "headline": "fa1 f16/f16 d8192 tg 37.09; fa1 f16/f16 d16384 tg 35.16; fa1 q8_0/q8_0 d8192 tg 34.47; fa1 q8_0/q8_0 d16384 tg 32.20; fa0 f16/f16 d8192 tg 28.70; fa0 f16/f16 d16384 tg 22.81", "missing": [], "utc": "2026-11-24T09:22:37Z", "image": "p104-llama:b098f6f-20261123"}

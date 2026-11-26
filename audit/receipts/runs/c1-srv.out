@@ -1,0 +1,31 @@
+
+==========
+== CUDA ==
+==========
+
+CUDA Version 12.9.1
+
+Container image Copyright (c) 2016-2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+
+This container image and its contents are governed by the NVIDIA Deep Learning Container License.
+By pulling and using the container, you accept the terms and conditions of this license:
+https://developer.nvidia.com/ngc/nvidia-deep-learning-container-license
+
+A copy of this license is made available in this container at /NGC-DL-CONTAINER-LICENSE for your convenience.
+
+0.00.044.910 I srv  llama_server: initializing ...
+0.00.044.927 I cmn  common_param: common_params_print_info: verbosity = 3 (adjust with the `-lv N` CLI arg)
+0.00.050.431 W srv  server_setup: security: no API key is set and CORS allows all origins (see https://github.com/ggml-org/llama.cpp/pull/25655)
+0.00.054.604 I srv    load_model: loading model '/models/experimental/qwen35-9b/Qwen3.5-9B-Q4_K_M.gguf'
+0.29.131.942 I cmn          init: llama threadpool init, n_threads = 4
+0.29.274.739 I srv    load_model: initializing, n_slots = 1, n_ctx_slot = 4096, kv_unified = 'false'
+0.29.293.882 I srv  server_run_i: model loaded
+0.29.295.440 I srv  server_on_li: listening on http://0.0.0.0:18400
+0.32.267.062 I slot       select: id  0 | task -1 | selected slot by LRU, n_tokens = 0, t_last = -1
+0.32.267.193 I slot launch_slot_: id  0 | task 0 | processing task, is_child = 0
+0.32.920.509 I slot print_timing: id  0 | task 0 | prompt eval time =     241.08 ms /    13 tokens (   18.54 ms per token,    53.92 tokens per second)
+0.32.920.518 I slot print_timing: id  0 | task 0 |        eval time =     411.79 ms /    16 tokens (   27.45 ms per token,    36.43 tokens per second)
+0.32.920.519 I slot print_timing: id  0 | task 0 |       total time =     652.87 ms /    29 tokens
+0.32.920.526 I slot print_timing: id  0 | task 0 |    graphs reused =         14
+0.32.920.527 I slot print_timing: id  0 | task 0 |   graph reallocs =          0    /     0        (same size) / (changed size)
+0.32.920.577 I slot      release: id  0 | task 0 | stop processing: n_tokens = 28, truncated = 0

@@ -1,0 +1,25 @@
+ggml_cuda_init: found 1 CUDA devices (Total VRAM: 8109 MiB):
+  Device 0: NVIDIA P104-100, compute capability 6.1, VMM: yes, VRAM: 8109 MiB
+Testing 2 devices
+
+Backend 1/2: CUDA0
+  Device description: NVIDIA P104-100
+  Device memory: 8109 MB (8023 MB free)
+
+  GATED_DELTA_NET(type=f32,head_count=32,head_size=128,n_seq_tokens=1,n_seqs=1,v_repeat=1,permuted=0,kda=0,K=1,correlated=0,padded_v=0,padded_q=0,permuted_k=0):               48396 runs -    24.57 us/run -     4160 kB/run - [1;34m 161.50 GB/s[0m
+  GATED_DELTA_NET(type=f32,head_count=32,head_size=128,n_seq_tokens=1,n_seqs=1,v_repeat=1,permuted=0,kda=1,K=1,correlated=0,padded_v=0,padded_q=0,permuted_k=0):               48210 runs -    24.21 us/run -     4176 kB/run - [1;34m 164.52 GB/s[0m
+  GATED_DELTA_NET(type=f32,head_count=32,head_size=128,n_seq_tokens=64,n_seqs=1,v_repeat=1,permuted=0,kda=0,K=1,correlated=0,padded_v=0,padded_q=0,permuted_k=0):               4089 runs -   276.05 us/run -     8208 kB/run - [1;34m  28.36 GB/s[0m
+  GATED_DELTA_NET(type=f32,head_count=32,head_size=128,n_seq_tokens=512,n_seqs=1,v_repeat=1,permuted=0,kda=0,K=1,correlated=0,padded_v=0,padded_q=0,permuted_k=0):               908 runs -  2014.27 us/run -    36992 kB/run - [1;34m  17.53 GB/s[0m
+  GATED_DELTA_NET(type=f32,head_count=16,head_size=128,n_seq_tokens=64,n_seqs=1,v_repeat=1,permuted=0,kda=0,K=1,correlated=0,padded_v=0,padded_q=0,permuted_k=0):               8177 runs -   132.59 us/run -     4104 kB/run - [1;34m  29.52 GB/s[0m
+  GATED_DELTA_NET(type=f32,head_count=16,head_size=128,n_seq_tokens=512,n_seqs=1,v_repeat=1,permuted=0,kda=0,K=1,correlated=0,padded_v=0,padded_q=0,permuted_k=0):              1815 runs -  1005.84 us/run -    18496 kB/run - [1;34m  17.55 GB/s[0m
+  GATED_DELTA_NET(type=f32,head_count=16,head_size=128,n_seq_tokens=2048,n_seqs=1,v_repeat=1,permuted=0,kda=0,K=1,correlated=0,padded_v=0,padded_q=0,permuted_k=0):                      495 runs -  4064.80 us/run -    67840 kB/run - [1;34m  15.95 GB/s[0m
+  GATED_DELTA_NET(type=f32,head_count=4,head_size=128,n_seq_tokens=64,n_seqs=1,v_repeat=1,permuted=0,kda=0,K=1,correlated=0,padded_v=0,padded_q=0,permuted_k=0):               32760 runs -    33.95 us/run -     1026 kB/run - [1;34m  28.83 GB/s[0m
+  GATED_DELTA_NET(type=f32,head_count=4,head_size=128,n_seq_tokens=512,n_seqs=1,v_repeat=1,permuted=0,kda=0,K=1,correlated=0,padded_v=0,padded_q=0,permuted_k=0):               7257 runs -   307.98 us/run -     4624 kB/run - [1;34m  14.32 GB/s[0m
+  GATED_DELTA_NET(type=f32,head_count=32,head_size=128,n_seq_tokens=64,n_seqs=1,v_repeat=1,permuted=0,kda=1,K=1,correlated=0,padded_v=0,padded_q=0,permuted_k=0):               3638 runs -   384.06 us/run -     9224 kB/run - [1;34m  22.91 GB/s[0m
+  GATED_DELTA_NET(type=f32,head_count=4,head_size=128,n_seq_tokens=64,n_seqs=1,v_repeat=1,permuted=0,kda=1,K=1,correlated=0,padded_v=0,padded_q=0,permuted_k=0):               24570 runs -    47.04 us/run -     1153 kB/run - [1;34m  23.38 GB/s[0m
+  GATED_DELTA_NET(type=f32,head_count=4,head_size=128,n_seq_tokens=2048,n_seqs=1,v_repeat=1,permuted=0,kda=0,K=1,correlated=0,padded_v=0,padded_q=0,permuted_k=0):              1979 runs -  1215.22 us/run -    16960 kB/run - [1;34m  13.32 GB/s[0m
+  Backend CUDA0: [1;32mOK[0m
+Backend 2/2: CPU
+  Skipping
+2/2 backends passed
+[1;32mOK[0m

@@ -1,0 +1,13 @@
+{
+  "tag": "h1-M2-B2",
+  "image": "p104-llama:b098f6f-20261123",
+  "container": "p104-h1-M2-B2",
+  "cmd": "llama-server -m /models/experimental/qwen35-9b-mtp/Qwen3.5-9B-MTP-Q4_K_M.gguf -ngl 99 -c 49152 -np 1 -fa on -ctk f16 -ctv f16 -ub 512 -t 4 --cache-ram 1024 --jinja --host 0.0.0.0 --port 18321 --metrics --no-warmup --alias qwen35-9b --spec-type draft-mtp --spec-draft-n-max 2",
+  "start": "45, 139, 405, 9.54, 0, 5, Not Active, Not Active, Not Active, Not Active",
+  "end": "61, 1860, 5005, 55.12, 0, 5, Not Active, Not Active, Not Active, Not Active",
+  "max_temp": 63,
+  "trip": null,
+  "rc": 137,
+  "secs": 428,
+  "utc": "2026-11-23T16:29:21Z"
+}

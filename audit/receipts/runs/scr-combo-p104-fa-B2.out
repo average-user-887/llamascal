@@ -1,0 +1,31 @@
+ggml_cuda_init: found 1 CUDA devices (Total VRAM: 8109 MiB):
+  Device 0: NVIDIA P104-100, compute capability 6.1, VMM: yes, VRAM: 8109 MiB
+Testing 2 devices
+
+Backend 1/2: CUDA0
+  Device description: NVIDIA P104-100
+  Device memory: 8109 MB (8023 MB free)
+
+  FLASH_ATTN_EXT(hsk=256,hsv=256,nh=2,nr23=[12,1],kv=4096,nb=1,mask=1,sinks=0,max_bias=0.000000,logit_softcap=0.000000,prec=f32,type_K=f16,type_V=f16,permute=[0,1,2,3],kv_view=1,v_is_view_of_k=0,n_kv_max=2048,q_head_padding=0,mask_heads=1):                7952 runs -   128.05 us/run - 100.66 MFLOP/run - [1;34m786.11 GFLOPS[0m
+  FLASH_ATTN_EXT(hsk=256,hsv=256,nh=2,nr23=[12,1],kv=16384,nb=1,mask=1,sinks=0,max_bias=0.000000,logit_softcap=0.000000,prec=f32,type_K=f16,type_V=f16,permute=[0,1,2,3],kv_view=1,v_is_view_of_k=0,n_kv_max=2048,q_head_padding=0,mask_heads=1):               2490 runs -   426.43 us/run - 402.65 MFLOP/run - [1;34m944.24 GFLOPS[0m
+  FLASH_ATTN_EXT(hsk=256,hsv=256,nh=4,nr23=[6,1],kv=4096,nb=1,mask=1,sinks=0,max_bias=0.000000,logit_softcap=0.000000,prec=f32,type_K=f16,type_V=f16,permute=[0,1,2,3],kv_view=1,v_is_view_of_k=0,n_kv_max=0,q_head_padding=0,mask_heads=1):                    6958 runs -   158.77 us/run - 100.66 MFLOP/run - [1;34m634.03 GFLOPS[0m
+  FLASH_ATTN_EXT(hsk=256,hsv=256,nh=4,nr23=[6,1],kv=4096,nb=512,mask=1,sinks=0,max_bias=0.000000,logit_softcap=0.000000,prec=f32,type_K=f16,type_V=f16,permute=[0,1,2,3],kv_view=1,v_is_view_of_k=0,n_kv_max=0,q_head_padding=0,mask_heads=1):                    50 runs - 20132.50 us/run -  51.54 GFLOP/run - [1;34m  2.56 TFLOPS[0m
+  FLASH_ATTN_EXT(hsk=256,hsv=256,nh=4,nr23=[6,1],kv=16384,nb=1,mask=1,sinks=0,max_bias=0.000000,logit_softcap=0.000000,prec=f32,type_K=f16,type_V=f16,permute=[0,1,2,3],kv_view=1,v_is_view_of_k=0,n_kv_max=0,q_head_padding=0,mask_heads=1):                   1743 runs -   598.82 us/run - 402.65 MFLOP/run - [1;34m672.41 GFLOPS[0m
+  FLASH_ATTN_EXT(hsk=256,hsv=256,nh=4,nr23=[6,1],kv=16384,nb=512,mask=1,sinks=0,max_bias=0.000000,logit_softcap=0.000000,prec=f32,type_K=f16,type_V=f16,permute=[0,1,2,3],kv_view=1,v_is_view_of_k=0,n_kv_max=0,q_head_padding=0,mask_heads=1):                   13 runs - 78159.08 us/run - 206.16 GFLOP/run - [1;34m  2.64 TFLOPS[0m
+  FLASH_ATTN_EXT(hsk=128,hsv=128,nh=8,nr23=[1,1],kv=4096,nb=1,mask=1,sinks=0,max_bias=0.000000,logit_softcap=0.000000,prec=f32,type_K=f16,type_V=f16,permute=[0,1,2,3],kv_view=1,v_is_view_of_k=0,n_kv_max=0,q_head_padding=0,mask_heads=1):                   17883 runs -    68.59 us/run -  16.78 MFLOP/run - [1;34m244.60 GFLOPS[0m
+  FLASH_ATTN_EXT(hsk=128,hsv=128,nh=8,nr23=[4,1],kv=4096,nb=1,mask=1,sinks=0,max_bias=0.000000,logit_softcap=0.000000,prec=f32,type_K=f16,type_V=f16,permute=[0,1,2,3],kv_view=1,v_is_view_of_k=0,n_kv_max=0,q_head_padding=0,mask_heads=1):                   13419 runs -    81.06 us/run -  67.11 MFLOP/run - [1;34m827.93 GFLOPS[0m
+  FLASH_ATTN_EXT(hsk=128,hsv=128,nh=8,nr23=[8,1],kv=4096,nb=1,mask=1,sinks=0,max_bias=0.000000,logit_softcap=0.000000,prec=f32,type_K=f16,type_V=f16,permute=[0,1,2,3],kv_view=1,v_is_view_of_k=0,n_kv_max=0,q_head_padding=0,mask_heads=1):                    9698 runs -   107.89 us/run - 134.22 MFLOP/run - [1;34m  1.24 TFLOPS[0m
+  FLASH_ATTN_EXT(hsk=256,hsv=256,nh=8,nr23=[1,1],kv=4096,nb=1,mask=1,sinks=0,max_bias=0.000000,logit_softcap=0.000000,prec=f32,type_K=f16,type_V=f16,permute=[0,1,2,3],kv_view=1,v_is_view_of_k=0,n_kv_max=0,q_head_padding=0,mask_heads=1):                    8943 runs -   126.94 us/run -  33.55 MFLOP/run - [1;34m264.33 GFLOPS[0m
+  FLASH_ATTN_EXT(hsk=256,hsv=256,nh=8,nr23=[4,1],kv=4096,nb=1,mask=1,sinks=0,max_bias=0.000000,logit_softcap=0.000000,prec=f32,type_K=f16,type_V=f16,permute=[0,1,2,3],kv_view=1,v_is_view_of_k=0,n_kv_max=0,q_head_padding=0,mask_heads=1):                    5968 runs -   169.06 us/run - 134.22 MFLOP/run - [1;34m793.88 GFLOPS[0m
+  FLASH_ATTN_EXT(hsk=256,hsv=256,nh=8,nr23=[8,1],kv=4096,nb=1,mask=1,sinks=0,max_bias=0.000000,logit_softcap=0.000000,prec=f32,type_K=f16,type_V=f16,permute=[0,1,2,3],kv_view=1,v_is_view_of_k=0,n_kv_max=0,q_head_padding=0,mask_heads=1):                    4103 runs -   248.48 us/run - 268.44 MFLOP/run - [1;34m  1.08 TFLOPS[0m
+  FLASH_ATTN_EXT(hsk=128,hsv=128,nh=8,nr23=[1,1],kv=16384,nb=1,mask=1,sinks=0,max_bias=0.000000,logit_softcap=0.000000,prec=f32,type_K=f16,type_V=f16,permute=[0,1,2,3],kv_view=1,v_is_view_of_k=0,n_kv_max=0,q_head_padding=0,mask_heads=1):                   4473 runs -   242.41 us/run -  67.11 MFLOP/run - [1;34m276.84 GFLOPS[0m
+  FLASH_ATTN_EXT(hsk=128,hsv=128,nh=8,nr23=[4,1],kv=16384,nb=1,mask=1,sinks=0,max_bias=0.000000,logit_softcap=0.000000,prec=f32,type_K=f16,type_V=f16,permute=[0,1,2,3],kv_view=1,v_is_view_of_k=0,n_kv_max=0,q_head_padding=0,mask_heads=1):                   3730 runs -   297.33 us/run - 268.44 MFLOP/run - [1;34m902.83 GFLOPS[0m
+  FLASH_ATTN_EXT(hsk=128,hsv=128,nh=8,nr23=[8,1],kv=16384,nb=1,mask=1,sinks=0,max_bias=0.000000,logit_softcap=0.000000,prec=f32,type_K=f16,type_V=f16,permute=[0,1,2,3],kv_view=1,v_is_view_of_k=0,n_kv_max=0,q_head_padding=0,mask_heads=1):                   2805 runs -   375.21 us/run - 536.87 MFLOP/run - [1;34m  1.43 TFLOPS[0m
+  FLASH_ATTN_EXT(hsk=256,hsv=256,nh=8,nr23=[1,1],kv=16384,nb=1,mask=1,sinks=0,max_bias=0.000000,logit_softcap=0.000000,prec=f32,type_K=f16,type_V=f16,permute=[0,1,2,3],kv_view=1,v_is_view_of_k=0,n_kv_max=0,q_head_padding=0,mask_heads=1):                   2238 runs -   471.45 us/run - 134.22 MFLOP/run - [1;34m284.69 GFLOPS[0m
+  FLASH_ATTN_EXT(hsk=256,hsv=256,nh=8,nr23=[4,1],kv=16384,nb=1,mask=1,sinks=0,max_bias=0.000000,logit_softcap=0.000000,prec=f32,type_K=f16,type_V=f16,permute=[0,1,2,3],kv_view=1,v_is_view_of_k=0,n_kv_max=0,q_head_padding=0,mask_heads=1):                   1683 runs -   601.76 us/run - 536.87 MFLOP/run - [1;34m892.17 GFLOPS[0m
+  FLASH_ATTN_EXT(hsk=256,hsv=256,nh=8,nr23=[8,1],kv=16384,nb=1,mask=1,sinks=0,max_bias=0.000000,logit_softcap=0.000000,prec=f32,type_K=f16,type_V=f16,permute=[0,1,2,3],kv_view=1,v_is_view_of_k=0,n_kv_max=0,q_head_padding=0,mask_heads=1):                   1128 runs -   912.59 us/run -   1.07 GFLOP/run - [1;34m  1.18 TFLOPS[0m
+  Backend CUDA0: [1;32mOK[0m
+Backend 2/2: CPU
+  Skipping
+2/2 backends passed
+[1;32mOK[0m

@@ -1,0 +1,17 @@
+Here is a Python function that parses an ISO-8601 date string without using any external libraries (like `datetime` or `dateutil`). It includes a comprehensive docstring and three unit tests using the built-in `unittest` framework.
+
+### The Solution
+
+```python
+import unittest
+
+def parse_iso_date(date_string):
+    """
+    Parses an ISO-8601 date string into a tuple of (year, month, day).
+    
+    This function handles the following formats:
+    - YYYY-MM-DD (e.g., "2023-10-05")
+    - YYYY-MM-DDTHH:MM:SS (e.g., "2023-10-05T14:30:00")
+    - YYYY-MM-DDTHH:MM:SS.sss (e.g., "2023-10-05T14:30:00.123")
+    - YYYY-MM-DDTHH:MM:SS+HH:MM (e.g., "2023-10-05T14:30:00+02:00")
+    -

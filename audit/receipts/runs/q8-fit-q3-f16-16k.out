@@ -1,0 +1,4 @@
+{"label": "q8-fit-q3-f16-16k", "mem_MiB_after_load": "6975"}
+{"label": "q8-fit-q3-f16-16k", "prompt_n": 6501, "pp_tps": 316.4, "tg_tps": 24.41, "n": 128}
+{"label": "q8-fit-q3-f16-16k", "prompt_n": 6848, "pp_tps": 341.6, "tg_tps": 6.6, "n": 128}
+{"label": "q8-fit-q3-f16-16k", "wall_s": 40.8, "peak_mem_MiB": 6991, "mem_after": "6991"}

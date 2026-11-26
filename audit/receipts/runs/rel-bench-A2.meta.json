@@ -1,0 +1,18 @@
+{
+  "tag": "rel-bench-A2",
+  "image": "p104-llama:b098f6f-20261123",
+  "container": "p104-rel-bench-A2",
+  "cmd": "llama-bench -m /models/experimental/qwen35-9b-mtp/Qwen3.5-9B-MTP-Q4_K_M.gguf -ngl 99 -fa 1 -ctk f16 -ctv f16 -ub 512 -t 4 -p 512 -n 128 -d 0,8192 -r 3 -o jsonl",
+  "start": "50, 253, 405, 9.98, 0, 5, Not Active, Not Active, Not Active, Not Active",
+  "end": "54, 1873, 5005, 53.81, 0, 5, Not Active, Not Active, Not Active, Not Active",
+  "max_temp": 56,
+  "trip": null,
+  "rc": 0,
+  "secs": 71,
+  "utc": "2026-11-26T04:05:18Z",
+  "trip_c": 88,
+  "warn_c": 83,
+  "cool_c": 50,
+  "warn": false,
+  "start_temp": 50
+}

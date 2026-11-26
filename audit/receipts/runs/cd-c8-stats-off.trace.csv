@@ -1,0 +1,25 @@
+t,temperature.gpu,clocks.sm,clocks.mem,power.draw,utilization.gpu,memory.used,clocks_event_reasons.hw_thermal_slowdown,clocks_event_reasons.sw_thermal_slowdown,clocks_event_reasons.hw_slowdown,clocks_event_reasons.sw_power_cap
+0.0,43,1898,5005,52.88,0,5,Not Active,Not Active,Not Active,Not Active
+0.6,43,1898,5005,52.54,0,7,Not Active,Not Active,Not Active,Not Active
+1.1,43,1898,5005,52.88,0,91,Not Active,Not Active,Not Active,Not Active
+1.7,43,1898,5005,52.78,0,91,Not Active,Not Active,Not Active,Not Active
+2.2,43,1898,5005,52.54,0,91,Not Active,Not Active,Not Active,Not Active
+2.8,43,1898,5005,52.88,0,91,Not Active,Not Active,Not Active,Not Active
+3.3,43,1898,5005,52.89,0,91,Not Active,Not Active,Not Active,Not Active
+3.9,43,1898,5005,52.78,0,91,Not Active,Not Active,Not Active,Not Active
+4.4,42,1898,5005,53.10,100,4953,Not Active,Not Active,Not Active,Not Active
+5.0,43,1898,5005,53.10,100,4953,Not Active,Not Active,Not Active,Not Active
+5.5,43,1898,5005,53.12,99,4953,Not Active,Not Active,Not Active,Not Active
+6.1,42,1898,5005,53.10,99,4953,Not Active,Not Active,Not Active,Not Active
+6.6,42,1898,5005,53.12,99,4953,Not Active,Not Active,Not Active,Not Active
+7.2,42,1898,5005,53.10,99,4953,Not Active,Not Active,Not Active,Not Active
+7.7,42,1898,5005,53.10,99,4953,Not Active,Not Active,Not Active,Not Active
+8.2,43,1898,5005,53.10,99,4953,Not Active,Not Active,Not Active,Not Active
+8.8,42,1898,5005,53.10,99,4953,Not Active,Not Active,Not Active,Not Active
+9.3,43,1898,5005,53.10,99,4953,Not Active,Not Active,Not Active,Not Active
+9.9,43,1898,5005,53.10,99,4953,Not Active,Not Active,Not Active,Not Active
+10.4,42,1898,5005,53.12,99,4953,Not Active,Not Active,Not Active,Not Active
+10.9,43,1847,5005,137.12,99,5089,Not Active,Not Active,Not Active,Not Active
+11.5,44,1860,5005,141.42,99,5089,Not Active,Not Active,Not Active,Not Active
+12.0,45,1822,5005,134.98,99,5089,Not Active,Not Active,Not Active,Not Active
+12.6,44,1873,5005,51.54,97,5,Not Active,Not Active,Not Active,Not Active
