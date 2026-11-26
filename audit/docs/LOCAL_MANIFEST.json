@@ -1,0 +1,37 @@
+{
+  "models": [
+    {
+      "id": "dense-tiny",
+      "family": "dense",
+      "repo": "unsloth/Qwen3.5-0.8B-GGUF",
+      "revision": "6ab461498e2023f6e3c1baea90a8f0fe38ab64d0",
+      "filename": "Qwen3.5-0.8B-Q4_K_M.gguf",
+      "path": "/home/<user>/models/pascal-bench/Qwen3.5-0.8B-Q4_K_M.gguf",
+      "bytes": 532517120,
+      "sha256": "bd258782e35f7f458f8aced1adc053e6e92e89bc735ba3be89d38a06121dc517",
+      "expected_sha256": "bd258782e35f7f458f8aced1adc053e6e92e89bc735ba3be89d38a06121dc517"
+    },
+    {
+      "id": "moe-tiny",
+      "family": "moe",
+      "repo": "QuantFactory/granite-3.1-1b-a400m-instruct-GGUF",
+      "revision": "d1057c7e1300230a3d9d06278a74e01bc5267708",
+      "filename": "granite-3.1-1b-a400m-instruct.Q4_K_M.gguf",
+      "path": "/home/<user>/models/pascal-bench/granite-3.1-1b-a400m-instruct.Q4_K_M.gguf",
+      "bytes": 850160576,
+      "sha256": "2e9e6946fbeb63f7cdc39a302979988daf04a9c9651fdcc0fc1df6f2aa05d459",
+      "expected_sha256": null
+    },
+    {
+      "id": "moe-large",
+      "family": "moe",
+      "repo": "bartowski/OLMoE-1B-7B-0924-Instruct-GGUF",
+      "revision": "7448e4317d367a3d6838fe367fe996758da6fc6e",
+      "filename": "OLMoE-1B-7B-0924-Instruct-Q4_K_M.gguf",
+      "path": "/home/<user>/models/pascal-bench/OLMoE-1B-7B-0924-Instruct-Q4_K_M.gguf",
+      "bytes": 4213513024,
+      "sha256": "3bd9ec48045f526508956ef663c5c11dbb3ef791a06f4e10a6be88379c40e1fe",
+      "expected_sha256": "3bd9ec48045f526508956ef663c5c11dbb3ef791a06f4e10a6be88379c40e1fe"
+    }
+  ]
+}

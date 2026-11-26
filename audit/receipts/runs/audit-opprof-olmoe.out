@@ -1,0 +1,43 @@
+ggml_cuda_init: found 1 CUDA devices (Total VRAM: 8109 MiB):
+  Device 0: NVIDIA P104-100, compute capability 6.1, VMM: yes, VRAM: 8109 MiB
+| model                          |       size |     params | backend    | ngl | n_batch | n_ubatch |  fa |            test |                  t/s |
+| ------------------------------ | ---------: | ---------: | ---------- | --: | ------: | -------: | --: | --------------: | -------------------: |
+| olmoe A1.7B Q4_K - Medium      |   3.92 GiB |     6.92 B | CUDA       |  99 |     128 |      128 |   1 |            tg16 |        126.47 ± 0.00 |
+p104opprof graphs=17 keys=1
+p104opprof == n8 kv256 nodes534 graphs=17 per_graph: gpu_ms=16.264 wall_ms=16.288 host_gap_ms=0.743 quant_ms=0.829 quant_launches=113.0
+p104opprof [n8 kv256 nodes534] class    3.3011 ms/graph  20.30% launches/graph=112.0 MUL_MAT:q4_K
+p104opprof [n8 kv256 nodes534] class    2.3186 ms/graph  14.26% launches/graph=16.0 MUL_MAT:f32
+p104opprof [n8 kv256 nodes534] class    1.9622 ms/graph  12.06% launches/graph=80.0 MUL_MAT_ID:q4_K
+p104opprof [n8 kv256 nodes534] class    1.2384 ms/graph   7.61% launches/graph=32.0 ADD
+p104opprof [n8 kv256 nodes534] class    0.9951 ms/graph   6.12% launches/graph=16.0 MUL_MAT_ID:q6_K
+p104opprof [n8 kv256 nodes534] class    0.9699 ms/graph   5.96% launches/graph=65.0 RMS_NORM
+p104opprof [n8 kv256 nodes534] class    0.8650 ms/graph   5.32% launches/graph=16.0 FLASH_ATTN_EXT
+p104opprof [n8 kv256 nodes534] class    0.8285 ms/graph   5.09% launches/graph=113.0 QUANT_Q8_1
+p104opprof [n8 kv256 nodes534] class    0.7915 ms/graph   4.87% launches/graph=16.0 GLU:SWIGLU
+p104opprof [n8 kv256 nodes534] class    0.7620 ms/graph   4.69% launches/graph=18.0 MUL_MAT:q6_K
+p104opprof [n8 kv256 nodes534] class    0.5374 ms/graph   3.30% launches/graph=32.0 ROPE
+p104opprof [n8 kv256 nodes534] class    0.4501 ms/graph   2.77% launches/graph=16.0 SOFT_MAX
+p104opprof [n8 kv256 nodes534] class    0.3742 ms/graph   2.30% launches/graph=2.0 GET_ROWS
+p104opprof [n8 kv256 nodes534] class    0.3528 ms/graph   2.17% launches/graph=17.0 SET_ROWS
+p104opprof [n8 kv256 nodes534] class    0.1708 ms/graph   1.05% launches/graph=80.0 RESHAPE
+p104opprof [n8 kv256 nodes534] class    0.1434 ms/graph   0.88% launches/graph=64.0 VIEW
+p104opprof [n8 kv256 nodes534] class    0.1106 ms/graph   0.68% launches/graph=16.0 MUL
+p104opprof [n8 kv256 nodes534] class    0.0901 ms/graph   0.55% launches/graph=48.0 PERMUTE
+p104opprof [n8 kv256 nodes534] class    0.0022 ms/graph   0.01% launches/graph=1.0 DUP
+p104opprof [n8 kv256 nodes534] op    3.3011 ms/graph  20.30% n/graph=112.0 MUL_MAT:q4_K:2048x2048:n1
+p104opprof [n8 kv256 nodes534] op    2.3186 ms/graph  14.26% n/graph=16.0 MUL_MAT:f32:64x2048:n1
+p104opprof [n8 kv256 nodes534] op    1.3903 ms/graph   8.55% n/graph=64.0 MUL_MAT_ID:q4_K:1024x2048:n1
+p104opprof [n8 kv256 nodes534] op    1.2384 ms/graph   7.61% n/graph=32.0 ADD
+p104opprof [n8 kv256 nodes534] op    0.9951 ms/graph   6.12% n/graph=16.0 MUL_MAT_ID:q6_K:2048x1024:n8
+p104opprof [n8 kv256 nodes534] op    0.9699 ms/graph   5.96% n/graph=65.0 RMS_NORM
+p104opprof [n8 kv256 nodes534] op    0.8650 ms/graph   5.32% n/graph=16.0 FLASH_ATTN_EXT
+p104opprof [n8 kv256 nodes534] op    0.8285 ms/graph   5.09% n/graph=113.0 QUANT_Q8_1
+p104opprof [n8 kv256 nodes534] op    0.7915 ms/graph   4.87% n/graph=16.0 GLU:SWIGLU
+p104opprof [n8 kv256 nodes534] op    0.5719 ms/graph   3.52% n/graph=16.0 MUL_MAT_ID:q4_K:2048x1024:n8
+p104opprof [n8 kv256 nodes534] op    0.5374 ms/graph   3.30% n/graph=32.0 ROPE
+p104opprof [n8 kv256 nodes534] op    0.4501 ms/graph   2.77% n/graph=16.0 SOFT_MAX
+p104opprof [n8 kv256 nodes534] op    0.4454 ms/graph   2.74% n/graph=2.0 MUL_MAT:q6_K:50304x2048:n1
+p104opprof [n8 kv256 nodes534] op    0.3742 ms/graph   2.30% n/graph=2.0 GET_ROWS
+p104opprof [n8 kv256 nodes534] op    0.3528 ms/graph   2.17% n/graph=17.0 SET_ROWS
+
+build: e318c44 (15)

@@ -1,0 +1,50 @@
+ggml_cuda_init: found 1 CUDA devices (Total VRAM: 8109 MiB):
+  Device 0: NVIDIA P104-100, compute capability 6.1, VMM: yes, VRAM: 8109 MiB
+| model                          |       size |     params | backend    | ngl | n_batch | n_ubatch |  fa |            test |                  t/s |
+| ------------------------------ | ---------: | ---------: | ---------- | --: | ------: | -------: | --: | --------------: | -------------------: |
+| qwen35 0.8B Q4_K - Medium      | 497.39 MiB |   752.39 M | CUDA       |  99 |     128 |      128 |   1 |            tg16 |         84.75 ± 0.00 |
+p104opprof graphs=17 keys=1
+p104opprof == n1 kv256 nodes1188 graphs=17 per_graph: gpu_ms=14.141 wall_ms=14.168 host_gap_ms=2.107 quant_ms=1.074 quant_launches=187.0
+p104opprof [n1 kv256 nodes1188] class    2.0764 ms/graph  14.68% launches/graph=34.0 MUL_MAT:q6_K
+p104opprof [n1 kv256 nodes1188] class    1.8390 ms/graph  13.00% launches/graph=196.0 MUL_MAT:q4_K
+p104opprof [n1 kv256 nodes1188] class    1.7605 ms/graph  12.45% launches/graph=72.0 MUL_MAT:q5_K
+p104opprof [n1 kv256 nodes1188] class    1.0739 ms/graph   7.59% launches/graph=187.0 QUANT_Q8_1
+p104opprof [n1 kv256 nodes1188] class    1.0209 ms/graph   7.22% launches/graph=115.0 RMS_NORM
+p104opprof [n1 kv256 nodes1188] class    0.8396 ms/graph   5.94% launches/graph=6.0 FLASH_ATTN_EXT
+p104opprof [n1 kv256 nodes1188] class    0.6808 ms/graph   4.81% launches/graph=66.0 ADD
+p104opprof [n1 kv256 nodes1188] class    0.6302 ms/graph   4.46% launches/graph=306.0 VIEW
+p104opprof [n1 kv256 nodes1188] class    0.6190 ms/graph   4.38% launches/graph=54.0 CPY
+p104opprof [n1 kv256 nodes1188] class    0.5352 ms/graph   3.78% launches/graph=18.0 SSM_CONV
+p104opprof [n1 kv256 nodes1188] class    0.4958 ms/graph   3.51% launches/graph=38.0 GET_ROWS
+p104opprof [n1 kv256 nodes1188] class    0.3790 ms/graph   2.68% launches/graph=180.0 RESHAPE
+p104opprof [n1 kv256 nodes1188] class    0.3727 ms/graph   2.64% launches/graph=18.0 GATED_DELTA_NET
+p104opprof [n1 kv256 nodes1188] class    0.3279 ms/graph   2.32% launches/graph=18.0 UNARY:SOFTPLUS
+p104opprof [n1 kv256 nodes1188] class    0.3029 ms/graph   2.14% launches/graph=72.0 MUL_MAT:q8_0
+p104opprof [n1 kv256 nodes1188] class    0.2984 ms/graph   2.11% launches/graph=18.0 CONCAT
+p104opprof [n1 kv256 nodes1188] class    0.1743 ms/graph   1.23% launches/graph=36.0 FILL
+p104opprof [n1 kv256 nodes1188] class    0.1543 ms/graph   1.09% launches/graph=12.0 ROPE
+p104opprof [n1 kv256 nodes1188] class    0.1444 ms/graph   1.02% launches/graph=24.0 UNARY:SIGMOID
+p104opprof [n1 kv256 nodes1188] class    0.1096 ms/graph   0.77% launches/graph=7.0 SET_ROWS
+p104opprof [n1 kv256 nodes1188] class    0.1010 ms/graph   0.71% launches/graph=24.0 GLU:SWIGLU
+p104opprof [n1 kv256 nodes1188] class    0.0875 ms/graph   0.62% launches/graph=18.0 UNARY:SILU
+p104opprof [n1 kv256 nodes1188] class    0.0477 ms/graph   0.34% launches/graph=6.0 CONT
+p104opprof [n1 kv256 nodes1188] class    0.0339 ms/graph   0.24% launches/graph=18.0 PERMUTE
+p104opprof [n1 kv256 nodes1188] class    0.0335 ms/graph   0.24% launches/graph=18.0 TRANSPOSE
+p104opprof [n1 kv256 nodes1188] class    0.0026 ms/graph   0.02% launches/graph=1.0 DUP
+p104opprof [n1 kv256 nodes1188] op    1.6877 ms/graph  11.93% n/graph=2.0 MUL_MAT:q6_K:248320x1024:n1
+p104opprof [n1 kv256 nodes1188] op    1.3927 ms/graph   9.85% n/graph=36.0 MUL_MAT:q5_K:6144x1024:n1
+p104opprof [n1 kv256 nodes1188] op    1.0739 ms/graph   7.59% n/graph=187.0 QUANT_Q8_1
+p104opprof [n1 kv256 nodes1188] op    1.0209 ms/graph   7.22% n/graph=115.0 RMS_NORM
+p104opprof [n1 kv256 nodes1188] op    0.9852 ms/graph   6.97% n/graph=96.0 MUL_MAT:q4_K:3584x1024:n1
+p104opprof [n1 kv256 nodes1188] op    0.8396 ms/graph   5.94% n/graph=6.0 FLASH_ATTN_EXT
+p104opprof [n1 kv256 nodes1188] op    0.6808 ms/graph   4.81% n/graph=66.0 ADD
+p104opprof [n1 kv256 nodes1188] op    0.6302 ms/graph   4.46% n/graph=306.0 VIEW
+p104opprof [n1 kv256 nodes1188] op    0.6190 ms/graph   4.38% n/graph=54.0 CPY
+p104opprof [n1 kv256 nodes1188] op    0.5352 ms/graph   3.78% n/graph=18.0 SSM_CONV
+p104opprof [n1 kv256 nodes1188] op    0.4958 ms/graph   3.51% n/graph=38.0 GET_ROWS
+p104opprof [n1 kv256 nodes1188] op    0.3790 ms/graph   2.68% n/graph=180.0 RESHAPE
+p104opprof [n1 kv256 nodes1188] op    0.3727 ms/graph   2.64% n/graph=18.0 GATED_DELTA_NET
+p104opprof [n1 kv256 nodes1188] op    0.3678 ms/graph   2.60% n/graph=36.0 MUL_MAT:q5_K:1024x2048:n1
+p104opprof [n1 kv256 nodes1188] op    0.3474 ms/graph   2.46% n/graph=36.0 MUL_MAT:q4_K:2048x1024:n1
+
+build: e318c44 (15)

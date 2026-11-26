@@ -1,0 +1,86 @@
+{
+  "schema_version": 1,
+  "published_sha_source": "HF file pages; null means not retrieved and must be pinned from reviewed download before use. Obtain immutable converter and reference-checkpoint revisions separately.",
+  "weights_only": true,
+  "actual_residency": "unverified",
+  "models": [
+    {
+      "id": "dense-tiny",
+      "family": "dense",
+      "gguf_repo": "unsloth/Qwen3.5-0.8B-GGUF",
+      "gguf_filename": "Qwen3.5-0.8B-Q4_K_M.gguf",
+      "quant": "Q4_K_M",
+      "listed_decimal_bytes_approx": 533000000,
+      "hub_sha256": "bd258782e35f7f458f8aced1adc053e6e92e89bc735ba3be89d38a06121dc517",
+      "source_file_url": "https://huggingface.co/unsloth/Qwen3.5-0.8B-GGUF/blob/main/Qwen3.5-0.8B-Q4_K_M.gguf",
+      "reference_checkpoint": "Qwen/Qwen3.5-0.8B",
+      "common": true,
+      "ladder_gpu": "P620"
+    },
+    {
+      "id": "dense-mid",
+      "family": "dense",
+      "gguf_repo": "unsloth/Qwen3.5-4B-GGUF",
+      "gguf_filename": "Qwen3.5-4B-Q4_K_M.gguf",
+      "quant": "Q4_K_M",
+      "listed_decimal_bytes_approx": 2740000000,
+      "hub_sha256": "00fe7986ff5f6b463e62455821146049db6f9313603938a70800d1fb69ef11a4",
+      "source_file_url": "https://huggingface.co/unsloth/Qwen3.5-4B-GGUF/blob/main/Qwen3.5-4B-Q4_K_M.gguf",
+      "reference_checkpoint": "Qwen/Qwen3.5-4B",
+      "common": false,
+      "ladder_gpu": "P2000"
+    },
+    {
+      "id": "dense-large",
+      "family": "dense",
+      "gguf_repo": "unsloth/Qwen3.5-9B-GGUF",
+      "gguf_filename": "Qwen3.5-9B-Q4_K_M.gguf",
+      "quant": "Q4_K_M",
+      "listed_decimal_bytes_approx": 5680000000,
+      "hub_sha256": "03b74727a860a56338e042c4420bb3f04b2fec5734175f4cb9fa853daf52b7e8",
+      "source_file_url": "https://huggingface.co/unsloth/Qwen3.5-9B-GGUF/blob/main/Qwen3.5-9B-Q4_K_M.gguf",
+      "reference_checkpoint": "Qwen/Qwen3.5-9B",
+      "common": false,
+      "ladder_gpu": "P104"
+    },
+    {
+      "id": "moe-tiny",
+      "family": "moe",
+      "gguf_repo": "QuantFactory/granite-3.1-1b-a400m-instruct-GGUF",
+      "gguf_filename": "granite-3.1-1b-a400m-instruct.Q4_K_M.gguf",
+      "quant": "Q4_K_M",
+      "listed_decimal_bytes_approx": 850000000,
+      "hub_sha256": null,
+      "source_file_url": "https://huggingface.co/QuantFactory/granite-3.1-1b-a400m-instruct-GGUF/blob/main/granite-3.1-1b-a400m-instruct.Q4_K_M.gguf",
+      "reference_checkpoint": "ibm-granite/granite-3.1-1b-a400m-instruct",
+      "common": true,
+      "ladder_gpu": "P620"
+    },
+    {
+      "id": "moe-mid",
+      "family": "moe",
+      "gguf_repo": "tensorblock/granite-3.1-3b-a800m-instruct-GGUF",
+      "gguf_filename": "granite-3.1-3b-a800m-instruct-Q4_K_M.gguf",
+      "quant": "Q4_K_M",
+      "listed_decimal_bytes_approx": 2017000000,
+      "hub_sha256": null,
+      "source_file_url": "https://huggingface.co/tensorblock/granite-3.1-3b-a800m-instruct-GGUF/blob/main/granite-3.1-3b-a800m-instruct-Q4_K_M.gguf",
+      "reference_checkpoint": "ibm-granite/granite-3.1-3b-a800m-instruct",
+      "common": false,
+      "ladder_gpu": "P2000"
+    },
+    {
+      "id": "moe-large",
+      "family": "moe",
+      "gguf_repo": "bartowski/OLMoE-1B-7B-0924-Instruct-GGUF",
+      "gguf_filename": "OLMoE-1B-7B-0924-Instruct-Q4_K_M.gguf",
+      "quant": "Q4_K_M",
+      "listed_decimal_bytes_approx": 4210000000,
+      "hub_sha256": "3bd9ec48045f526508956ef663c5c11dbb3ef791a06f4e10a6be88379c40e1fe",
+      "source_file_url": "https://huggingface.co/bartowski/OLMoE-1B-7B-0924-Instruct-GGUF/blob/main/OLMoE-1B-7B-0924-Instruct-Q4_K_M.gguf",
+      "reference_checkpoint": "allenai/OLMoE-1B-7B-0924-Instruct",
+      "common": false,
+      "ladder_gpu": "P104"
+    }
+  ]
+}

@@ -1,0 +1,21 @@
+ggml_cuda_init: found 1 CUDA devices (Total VRAM: 1992 MiB):
+  Device 0: Quadro P620, compute capability 6.1, VMM: yes, VRAM: 1992 MiB
+Testing 2 devices
+
+Backend 1/2: CUDA0
+  Device description: Quadro P620
+  Device memory: 1992 MB (1860 MB free)
+
+  MUL_MAT_ID(type_a=q4_K,type_b=f32,n_mats=128,n_used=8,b=0,m=768,n=1,k=2048,m_v=0,ids_offset=0,skip=0):                7948 runs -   127.47 us/run -  25.17 MFLOP/run - [1;34m197.43 GFLOPS[0m
+  MUL_MAT_ID(type_a=q6_K,type_b=f32,n_mats=128,n_used=8,b=0,m=768,n=1,k=2048,m_v=0,ids_offset=0,skip=0):                3974 runs -   290.20 us/run -  25.17 MFLOP/run - [1;34m 86.72 GFLOPS[0m
+  MUL_MAT_ID(type_a=q4_K,type_b=f32,n_mats=128,n_used=8,b=0,m=768,n=512,k=2048,m_v=0,ids_offset=0,skip=0):                80 runs - 13737.51 us/run -  12.88 GFLOP/run - [1;34m937.94 GFLOPS[0m
+  MUL_MAT_ID(type_a=q6_K,type_b=f32,n_mats=128,n_used=8,b=0,m=768,n=512,k=2048,m_v=0,ids_offset=0,skip=0):                72 runs - 15449.12 us/run -  12.88 GFLOP/run - [1;34m834.02 GFLOPS[0m
+  MUL_MAT_ID(type_a=q4_K,type_b=f32,n_mats=32,n_used=4,b=0,m=1792,n=1,k=2048,m_v=0,ids_offset=0,skip=0):               10218 runs -   143.42 us/run -  29.36 MFLOP/run - [1;34m204.71 GFLOPS[0m
+  MUL_MAT_ID(type_a=q6_K,type_b=f32,n_mats=32,n_used=4,b=0,m=1792,n=1,k=2048,m_v=0,ids_offset=0,skip=0):                3406 runs -   332.00 us/run -  29.36 MFLOP/run - [1;34m 88.43 GFLOPS[0m
+  MUL_MAT_ID(type_a=q4_K,type_b=f32,n_mats=32,n_used=4,b=0,m=1792,n=512,k=2048,m_v=0,ids_offset=0,skip=0):                91 runs - 11790.54 us/run -  15.03 GFLOP/run - [1;34m  1.27 TFLOPS[0m
+  MUL_MAT_ID(type_a=q6_K,type_b=f32,n_mats=32,n_used=4,b=0,m=1792,n=512,k=2048,m_v=0,ids_offset=0,skip=0):                84 runs - 12708.60 us/run -  15.03 GFLOP/run - [1;34m  1.18 TFLOPS[0m
+  Backend CUDA0: [1;32mOK[0m
+Backend 2/2: CPU
+  Skipping
+2/2 backends passed
+[1;32mOK[0m

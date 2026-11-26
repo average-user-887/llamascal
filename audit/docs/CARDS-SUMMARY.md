@@ -44,3 +44,27 @@
   2. `84f6210` (Avenue B / `c7b`): `I=64, J=128` Pascal dp4a MMQ tiles (`mmq-config-pascal-dp4a.cuh`), `+6.26%/+6.40%` `pp512/pp2048` on P104-100, `+6.90%/+5.86%` on P2000.
   3. `585eb84` (Avenue C): `gated_delta_net_cuda` `__ldg` loads + single `expf` in `KDA` (`-0.06%..-2.12%` P104-100 / `-0.65%..-7.14%` P2000 for `n<=512`).
 - P104-100 gates: `test-backend-ops` 2/2 PASS (`MUL_MAT,MUL_MAT_ID,MUL_MAT_FUSION,GATED_DELTA_NET`); KLD `ub1 0.000609 (98.904%)`, `ub2 0.000434 (98.630%)`, `ub3 0.000521 (98.748%)`, `ub4 -0.000000 (100.000%)`, `ub512 0.000493 (98.630%)`; `p104-svc` restarted healthy (`:18100/health` `{"status":"ok"}`, still running `p104-llama:67df1fa-20261126`), `140.00 W` cap intact.
+
+---
+
+## `llamascal` `c01d483` (`v15b-bin`) — Audit-Certified 3-Card Dense + MoE Results (2026-11-26)
+
+- **Provenance & Binaries**: Verified via `tools/dso_witness.sh` (`LD_LIBRARY_PATH` overrides `DT_RUNPATH`):
+  - Stock (`5bacb7c`): `/home/<user>/p104-exp/archive/base-bin` (`libggml-cuda` `b5b40012...`)
+  - Daily control (`p104-v14`, `585eb84`): `/home/<user>/p104-exp/v14-bin` (`34d3ecff...`, live `llamascal-bin` & `p104-svc` untouched)
+  - Certified candidate (`c01d483`): `/home/<user>/p104-exp/v15b-bin` (`8627f886...`, patches in `patches/llamascal-v15b/0001..0003`)
+- **Changes over `p104-v14`**:
+  1. `mmq-vec-dot.cuh`: `Q5_K` `i0`-outer dp4a inner loop (`-0.5%..-0.8%` `Q5_K` prefill).
+  2. `fattn-tile.cuh`: `nbatch_fa=64` for `DKQ=256` `ncols=4` (`128,3,64,64`) & `ncols=8` (`256,2,64,128`), cutting `hsk=256` decode op latency by `-5.95%..-18.14%` across `P620`/`P2000`/`P104`.
+  3. `mmvq.cu`: Hoisted `Q4_K`/`Q5_K`/`Q6_K` `n=1` k-loops (`Q4_K 248320x4096 -1.22%`, `MUL_MAT_ID Q6_K -0.61%..-0.78%`), guarded `Q4_K n=1` wide k-loop to `!has_ids`, and **fixed `small_k` (`k < 2048`) Pascal MMVQ dispatch** (`vdr`, `nwarps`, k-loops falling back to full-warp `vdr=2, nwarps=4`).
+- **Exclusive Solo 3-Card COMMON (`-ngl 99 -fa 1 -ctk f16 -ctv f16 -b 128 -ub 128 -t 4 -p 128,512 -n 64`, `Stock -> v14 -> v15b`)**:
+  - **P620** (`Qwen3.5-0.8B` SHA `bd258782...`): `pp512 924.19 -> 980.64 -> 1005.99` (`+8.85%` vs Stock), `tg64 49.06 -> 41.98 -> 51.39` (`+4.76%` vs Stock, `+22.42%` vs `v14`).
+  - **P620** (`Granite-3.1-1B-A400M` SHA `2e9e6946...`): `pp512 978.52 -> 1006.82 -> 1012.44` (`+3.47%` vs Stock), `tg64 85.78 -> 65.22 -> 85.23` (`-0.64%` vs Stock, `+30.69%` vs `v14`).
+  - **P2000** (`Qwen3.5-0.8B`): `pp128 1897.10 -> 2249.42 -> 2300.26` (`+21.25%` vs Stock), `pp512 2183.46 -> 2232.32 -> 2278.25` (`+4.34%` vs Stock), `tg64 103.80 -> 89.60 -> 104.17` (`+0.36%` vs Stock, `+16.26%` vs `v14`).
+  - **P2000** (`Granite-3.1-1B-A400M`): `pp512 2266.04 -> 2349.18 -> 2358.17` (`+4.07%` vs Stock), `tg64 172.73 -> 139.91 -> 171.57` (`-0.67%` vs Stock, `+22.63%` vs `v14`).
+  - **P104** (`Qwen3.5-0.8B`): `pp512 3662.75 -> 3598.50 -> 3654.14` (`-0.24%` vs Stock, `+1.55%` vs `v14`), `tg64 144.13 -> 129.76 -> 141.92` (`-1.53%` vs Stock, `+9.37%` vs `v14`).
+  - **P104** (`Granite-3.1-1B-A400M`): `pp512 4036.09 -> 4109.84 -> 4125.80` (`+2.22%` vs Stock), `tg64 242.90 -> 211.44 -> 240.51` (`-0.98%` vs Stock, `+13.75%` vs `v14`).
+- **Exclusive Solo P104 LADDER (`Stock -> v14 -> v15b`)**:
+  - `OLMoE-1B-7B` (`3bd9ec48...`, `-ub 512`): `pp512 2297.70 -> 2503.21 -> 2497.29` (`+8.69%` vs Stock), `tg128 140.32 -> 170.71 -> 179.19` (`+27.71%` vs Stock, `+4.97%` vs `v14`).
+  - `Qwen3.5-9B`: `pp512@d0 532.90 -> 618.20 -> 618.43` (`+16.05%` vs Stock), `pp2048@d0 521.75 -> 603.60 -> 603.44` (`+15.66%` vs Stock), `tg128@d0 29.63 -> 39.00 -> 38.98` (`+31.53%` vs Stock), `tg128@d16384 27.10 -> 34.82 -> 35.57` (`+31.26%` vs Stock, `+2.14%` vs `v14`).
+- **Gates**: P104 9857/9857 ops PASS, P620 398/398 ops PASS; `Qwen3.5-9B` KLD `ub1 0.000490 (98.982%)`, `ub2 0.000439 (98.591%)`, `ub3 0.000521 (98.748%)`, `ub4 -0.000000 (100.000%)`, `ub512 0.000493 (98.630%)`; max 63 C, trip None, `140.00 W` cap & `p104-svc` `:18100/health` `200 OK` intact.

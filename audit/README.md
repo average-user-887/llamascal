@@ -9,8 +9,9 @@ This directory contains the sanitized documentation, exported patch series, ther
 | `upstream-base` | `5bacb7c868a2bc98682de15f447fc1ce17c9c49c` | Upstream `ggml-org/llama.cpp` baseline (`5bacb7c`). |
 | `p104-v11` | `b098f6f564900f6fa9798d85694b0a6eb4bc2f62` | `k1` + `k3`: Pascal `MMVQ_PARAMETERS_PASCAL` decode kernels (`Q4_K`/`Q5_K`/`Q6_K`) and per-op CUDA event attribution hooks. |
 | `p104-v13` | `67df1facf36aca85e0b19d9f75e8b0868ac550aa` | `v11` + `k4` (`Q5_K`/`Q6_K` MMVQ) + `c7a` (Pascal dp4a MMQ prefill) + `c2` (`P104_MTP_DRAFT_VOCAB`). |
-| `p104-v14` | `585eb84d0cd95b3126172754364514278e4c25a7` | **Latest promoted release**: `v13` + `baf7a5d` (Avenue A: column-outer `Q4_K` MMVQ at `ncols_dst == 3`) + `84f6210` (Avenue B / `c7b`: `I=64, J=128` Pascal dp4a MMQ tiles) + `585eb84` (Avenue C: `gated_delta_net` `__ldg` loads + single `expf` in KDA). |
-| `llamascal` | `e2ccb81536c3dd6ab5cee23938a31fddbd05780c` | Pure code branch: `p104-v14` plus 2 WIP `v15` commits (`ce70cb5`, `e2ccb81`) whose P104-100 validation (`v15-p104-*`) was in progress at snapshot time. |
+| `p104-v14` | `585eb84d0cd95b3126172754364514278e4c25a7` | Previous promoted release: `v13` + `baf7a5d` (Avenue A: column-outer `Q4_K` MMVQ at `ncols_dst == 3`) + `84f6210` (Avenue B / `c7b`: `I=64, J=128` Pascal dp4a MMQ tiles) + `585eb84` (Avenue C: `gated_delta_net` `__ldg` loads + single `expf` in KDA). |
+| `p104-v15b` | `c01d483` | **Latest promoted release**: `v14` + `ce70cb5` (`Q5_K` MMQ `i0`-outer, hoisted `Q4_K`/`Q5_K`/`Q6_K` `n=1` MMVQ k-loops) + `e2ccb81` (FlashAttention `sm_61` `nbatch_fa=64` for `DKQ=256`, `ncols=4,8`) + `c01d483` (`small_k` Pascal MMVQ fix + `!has_ids` `Q4_K` `n=1` guard). |
+| `llamascal` | `c01d483` | Pure code branch matching `p104-v15b`. |
 | `main` | — | `llamascal` code tree plus this `audit/` directory. |
 
 ## Hardware Tested
@@ -20,6 +21,20 @@ This directory contains the sanitized documentation, exported patch series, ther
 - **NVIDIA Quadro P620** (`GP107`, `sm_61`, 4 SMs, 2 GiB GDDR5)
 
 ## Headline Verified Results
+
+### `p104-v15b` (`c01d483`) vs Stock (`5bacb7c`) & `p104-v14` (`585eb84`)
+- **Correctness & Quality Gates**:
+  - `test-backend-ops` (`P104`): `9857/9857` passed (`MUL_MAT,MUL_MAT_ID,MUL_MAT_FUSION,FLASH_ATTN_EXT,GATED_DELTA_NET`, max `42°C`).
+  - `test-backend-ops` (`P620`): `398/398` passed (`MUL_MAT,MUL_MAT_ID -p "type_a=(q4_K|q5_K|q6_K)"`, max `43°C`).
+  - KLD (`Qwen3.5-9B-Q4_K_M`, 5 chunks WikiText-2, max `63°C`): `ub1 0.000490` (`98.982%` same top), `ub2 0.000439` (`98.591%`), `ub3 0.000521` (`98.748%`), `ub4 -0.000000` (`100.000%`), `ub512 0.000493` (`98.630%`).
+- **3-Card Solo `COMMON` (`Qwen3.5-0.8B` Dense & `granite-3.1-1b-a400m` MoE, max `60°C`, `trips=[]`)**:
+  - Fixed `v14`'s `small_k` (`k < 2048`) MMVQ bug and `MUL_MAT_ID Q4_K` `n=1` regression, recovering `+9.37%` to `+30.69%` `tg64` vs `v14` across `P620`, `P2000`, and `P104`.
+  - `P620 Qwen3.5-0.8B`: `pp128 1016.20` (`+7.75%` vs Stock), `pp512 1005.99` (`+8.85%` vs Stock), `tg64 51.39` (`+4.76%` vs Stock, `+22.42%` vs `v14`).
+  - `P2000 Qwen3.5-0.8B`: `pp128 2300.26` (`+21.25%` vs Stock), `pp512 2278.25` (`+4.34%` vs Stock), `tg64 104.17` (`+0.36%` vs Stock, `+16.26%` vs `v14`).
+  - `hsk=256` `FLASH_ATTN_EXT` ops improved `-5.15%..-18.14%` across all three GPUs.
+- **P104-100 `LADDER` (140.00 W cap, max `63°C`, `trips=[]`)**:
+  - `OLMoE-1B-7B`: `pp128 1523.67` (`-4.54%` vs Stock), `pp512 2497.29` (`+8.69%` vs Stock), `tg128 179.19 tok/s` (**`+27.71%` vs Stock**, **`+4.97%` vs `v14`**).
+  - `Qwen3.5-9B`: `pp512@d0 618.43` (`+16.05%` vs Stock), `pp2048@d0 603.44` (`+15.66%` vs Stock), `tg128@d0 38.98` (`+31.53%` vs Stock), `tg128@d16384 35.57` (**`+31.26%` vs Stock**, **`+2.14%` vs `v14`**).
 
 ### `p104-v14` (`585eb84`) vs `p104-v13` (`67df1fa`)
 - **P104-100 (140.00 W cap)**:
@@ -42,10 +57,10 @@ See [`docs/LEDGER.md`](docs/LEDGER.md) and [`docs/CARDS-SUMMARY.md`](docs/CARDS-
 
 ## Layout
 
-- `docs/` — `LEDGER.md`, `CARDS-SUMMARY.md`, `FINAL-REPORT.md`, `REVIEW-K1.md`, `PLACEMENT-ANALYSIS.md`, `HANDOFF-LLAMASCAL-ORCHESTRATOR.md`, and `cards/` (`CARD-*` specs & result reports).
-- `patches/` — Single-file diffs (`k3-v11-mmvq-pascal-kquant.patch`, `v13-*.patch`, `v14-*.patch`) and `git format-patch` series (`llamascal-v13/`, `llamascal-v14/`).
-- `scripts/` — `gguard.py` (thermal/slowdown guard), `bench.py`, `pascal-transfer-bench.sh`, and `container/` build/serving scripts.
-- `receipts/hashes/` — Binary SHA-256 checksums (`v11-HASHES.txt`, `v13-HASHES.txt`, `v14-HASHES.txt`, `v15-HASHES.txt`).
+- `docs/` — `FINAL-REPORT-v15b-20261126.md`, `LEDGER.md`, `CARDS-SUMMARY.md`, `FINAL-REPORT.md`, `REVIEW-K1.md`, `PLACEMENT-ANALYSIS.md`, `HANDOFF-LLAMASCAL-ORCHESTRATOR.md`, `LLAMASCAL_ORCHESTRATOR.md`, `PASCAL_MODELS.json`, `NEXT_EXPERIMENTS.md`, `LOCAL_MANIFEST.json`, and `cards/` (`CARD-*` specs & result reports).
+- `patches/` — Single-file diffs (`k3-v11-mmvq-pascal-kquant.patch`, `v13-*.patch`, `v14-*.patch`, `v15b-from-v14.patch`) and `git format-patch` series (`llamascal-v13/`, `llamascal-v14/`, `llamascal-v15b/`).
+- `scripts/` — `dso_witness.sh` (loaded-DSO provenance guard), `gguard.py` (thermal/slowdown guard), `bench.py`, `pascal-transfer-bench.sh`, and `container/` build/serving scripts.
+- `receipts/hashes/` — Binary SHA-256 checksums (`v11-HASHES.txt`, `v13-HASHES.txt`, `v14-HASHES.txt`, `v15-HASHES.txt`, `v15b-HASHES.txt`).
 - `receipts/runs/` — Sanitized raw `.out`, `.meta.json`, `.trace.csv`, `.log`, `.json`, and `.summary.log` run receipts.
 - `MANIFEST.sha256` — SHA-256 manifest for all files in `audit/`.
 
@@ -58,10 +73,10 @@ cd audit
 sha256sum -c MANIFEST.sha256
 ```
 
-Build from any release tag (for example `p104-v14`) targeting Pascal `sm_61`:
+Build from any release tag (for example `p104-v15b`) targeting Pascal `sm_61`:
 
 ```bash
-git checkout p104-v14
+git checkout p104-v15b
 cmake -B build -DGGML_CUDA=ON -DCMAKE_CUDA_ARCHITECTURES=61-real -DCMAKE_BUILD_TYPE=Release
 cmake --build build -j"$(nproc)" --target llama-cli llama-server llama-bench llama-perplexity test-backend-ops
 ```
