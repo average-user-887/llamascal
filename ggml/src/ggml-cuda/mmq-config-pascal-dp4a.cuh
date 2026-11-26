@@ -113,6 +113,7 @@ static constexpr __host__ __device__ ggml_cuda_mmq_config ggml_cuda_mmq_get_conf
     CASE(GGML_TYPE_Q4_K, 256, 2, 64,  16, GGML_CUDA_MMQ_SRAM_LAYOUT_Q8_1, MMQ_ITER_K, false, true);
     CASE(GGML_TYPE_Q4_K, 256, 2, 64,  32, GGML_CUDA_MMQ_SRAM_LAYOUT_Q8_1, MMQ_ITER_K, false, true);
     CASE(GGML_TYPE_Q4_K, 256, 2, 64,  64, GGML_CUDA_MMQ_SRAM_LAYOUT_Q8_1, MMQ_ITER_K, false, true);
+    CASE(GGML_TYPE_Q4_K, 256, 2, 64, 128, GGML_CUDA_MMQ_SRAM_LAYOUT_Q8_1, MMQ_ITER_K, false, true); // p104 c7b
     CASE(GGML_TYPE_Q4_K, 256, 2, 64,   8, GGML_CUDA_MMQ_SRAM_LAYOUT_Q8_1, MMQ_ITER_K, false, false);
     CASE(GGML_TYPE_Q4_K, 256, 2, 64,  16, GGML_CUDA_MMQ_SRAM_LAYOUT_Q8_1, MMQ_ITER_K, false, false);
     CASE(GGML_TYPE_Q4_K, 256, 2, 64,  24, GGML_CUDA_MMQ_SRAM_LAYOUT_Q8_1, MMQ_ITER_K, false, false);
@@ -120,11 +121,13 @@ static constexpr __host__ __device__ ggml_cuda_mmq_config ggml_cuda_mmq_get_conf
     CASE(GGML_TYPE_Q4_K, 256, 2, 64,  40, GGML_CUDA_MMQ_SRAM_LAYOUT_Q8_1, MMQ_ITER_K, false, false);
     CASE(GGML_TYPE_Q4_K, 256, 2, 64,  48, GGML_CUDA_MMQ_SRAM_LAYOUT_Q8_1, MMQ_ITER_K, false, false);
     CASE(GGML_TYPE_Q4_K, 256, 2, 64,  64, GGML_CUDA_MMQ_SRAM_LAYOUT_Q8_1, MMQ_ITER_K, false, false);
+    CASE(GGML_TYPE_Q4_K, 256, 2, 64, 128, GGML_CUDA_MMQ_SRAM_LAYOUT_Q8_1, MMQ_ITER_K, false, false); // p104 c7b
 
     CASE(GGML_TYPE_Q5_K, 256, 2, 64,   8, GGML_CUDA_MMQ_SRAM_LAYOUT_Q8_1, MMQ_ITER_K, false, true);
     CASE(GGML_TYPE_Q5_K, 256, 2, 64,  16, GGML_CUDA_MMQ_SRAM_LAYOUT_Q8_1, MMQ_ITER_K, false, true);
     CASE(GGML_TYPE_Q5_K, 256, 2, 64,  32, GGML_CUDA_MMQ_SRAM_LAYOUT_Q8_1, MMQ_ITER_K, false, true);
     CASE(GGML_TYPE_Q5_K, 256, 2, 64,  64, GGML_CUDA_MMQ_SRAM_LAYOUT_Q8_1, MMQ_ITER_K, false, true);
+    CASE(GGML_TYPE_Q5_K, 256, 2, 64, 128, GGML_CUDA_MMQ_SRAM_LAYOUT_Q8_1, MMQ_ITER_K, false, true); // p104 c7b
     CASE(GGML_TYPE_Q5_K, 256, 2, 64,   8, GGML_CUDA_MMQ_SRAM_LAYOUT_Q8_1, MMQ_ITER_K, false, false);
     CASE(GGML_TYPE_Q5_K, 256, 2, 64,  16, GGML_CUDA_MMQ_SRAM_LAYOUT_Q8_1, MMQ_ITER_K, false, false);
     CASE(GGML_TYPE_Q5_K, 256, 2, 64,  24, GGML_CUDA_MMQ_SRAM_LAYOUT_Q8_1, MMQ_ITER_K, false, false);
@@ -132,11 +135,13 @@ static constexpr __host__ __device__ ggml_cuda_mmq_config ggml_cuda_mmq_get_conf
     CASE(GGML_TYPE_Q5_K, 256, 2, 64,  40, GGML_CUDA_MMQ_SRAM_LAYOUT_Q8_1, MMQ_ITER_K, false, false);
     CASE(GGML_TYPE_Q5_K, 256, 2, 64,  48, GGML_CUDA_MMQ_SRAM_LAYOUT_Q8_1, MMQ_ITER_K, false, false);
     CASE(GGML_TYPE_Q5_K, 256, 2, 64,  64, GGML_CUDA_MMQ_SRAM_LAYOUT_Q8_1, MMQ_ITER_K, false, false);
+    CASE(GGML_TYPE_Q5_K, 256, 2, 64, 128, GGML_CUDA_MMQ_SRAM_LAYOUT_Q8_1, MMQ_ITER_K, false, false); // p104 c7b
 
     CASE(GGML_TYPE_Q6_K, 256, 2, 64,   8, GGML_CUDA_MMQ_SRAM_LAYOUT_Q6_K, MMQ_ITER_K, false, true);
     CASE(GGML_TYPE_Q6_K, 256, 2, 64,  16, GGML_CUDA_MMQ_SRAM_LAYOUT_Q6_K, MMQ_ITER_K, false, true);
     CASE(GGML_TYPE_Q6_K, 256, 2, 64,  32, GGML_CUDA_MMQ_SRAM_LAYOUT_Q6_K, MMQ_ITER_K, false, true);
     CASE(GGML_TYPE_Q6_K, 256, 2, 64,  64, GGML_CUDA_MMQ_SRAM_LAYOUT_Q6_K, MMQ_ITER_K, false, true);
+    CASE(GGML_TYPE_Q6_K, 256, 2, 64, 128, GGML_CUDA_MMQ_SRAM_LAYOUT_Q6_K, MMQ_ITER_K, false, true); // p104 c7b
     CASE(GGML_TYPE_Q6_K, 256, 2, 64,   8, GGML_CUDA_MMQ_SRAM_LAYOUT_Q6_K, MMQ_ITER_K, false, false);
     CASE(GGML_TYPE_Q6_K, 256, 2, 64,  16, GGML_CUDA_MMQ_SRAM_LAYOUT_Q6_K, MMQ_ITER_K, false, false);
     CASE(GGML_TYPE_Q6_K, 256, 2, 64,  24, GGML_CUDA_MMQ_SRAM_LAYOUT_Q6_K, MMQ_ITER_K, false, false);
@@ -144,6 +149,7 @@ static constexpr __host__ __device__ ggml_cuda_mmq_config ggml_cuda_mmq_get_conf
     CASE(GGML_TYPE_Q6_K, 256, 2, 64,  40, GGML_CUDA_MMQ_SRAM_LAYOUT_Q6_K, MMQ_ITER_K, false, false);
     CASE(GGML_TYPE_Q6_K, 256, 2, 64,  48, GGML_CUDA_MMQ_SRAM_LAYOUT_Q6_K, MMQ_ITER_K, false, false);
     CASE(GGML_TYPE_Q6_K, 256, 2, 64,  64, GGML_CUDA_MMQ_SRAM_LAYOUT_Q6_K, MMQ_ITER_K, false, false);
+    CASE(GGML_TYPE_Q6_K, 256, 2, 64, 128, GGML_CUDA_MMQ_SRAM_LAYOUT_Q6_K, MMQ_ITER_K, false, false); // p104 c7b
 
 // ---------------------------------------------------------------------------------------------
 
