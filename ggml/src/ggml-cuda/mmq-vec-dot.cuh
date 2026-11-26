@@ -995,31 +995,33 @@ template <ggml_type type, int J, bool fallback> static __device__ __forceinline_
     for (int k01 = 0; k01 < MMQ_TILE_NE_K; k01 += QR5_K*VDR_Q5_K_Q8_1_MMQ) {
         const int k0 = k00 + k01;
 
-        float wd[I/warp_size][2];
-        float wm[I/warp_size][2];
+        // p104: i0-outer hoists x_qs[16] and float scales into registers once across all J/nwarps columns.
 #pragma unroll
         for (int i0 = 0; i0 < I; i0 += warp_size) {
             const int i = i0 + threadIdx.x;
             const uint8_t * sc = ((const uint8_t *) &x_sc[i * (MMQ_TILE_NE_K/8) + i/8 + k00/32]) + 2*(k01/16);
             const float2 dm = __half22float2(x_dm[i]);
+            float wd[2];
+            float wm[2];
 #pragma unroll
             for (int b = 0; b < 2; ++b) {
-                wd[i0/warp_size][b] = dm.x * sc[b];
-                wm[i0/warp_size][b] = dm.y * sc[b + 8];
+                wd[b] = dm.x * sc[b];
+                wm[b] = dm.y * sc[b + 8];
             }
-        }
+            const int * v_ptr = &x_qs[i*(QR5_K*MMQ_TILE_NE_K + 1) + k0];
+            int v[2*QI8_1];
+#pragma unroll
+            for (int l = 0; l < 2*QI8_1; ++l) {
+                v[l] = v_ptr[l];
+            }
 
 #pragma unroll
-        for (int j0 = 0; j0 < J; j0 += nwarps) {
-            const int j = j0 + threadIdx.y;
-            const int * u = &y_qs[j*MMQ_TILE_Y_K + k01];
-            const float2 ds0 = y_ds[j*MMQ_Y_DS_F32_NE + k01/QI8_1 + 0];
-            const float2 ds1 = y_ds[j*MMQ_Y_DS_F32_NE + k01/QI8_1 + 1];
+            for (int j0 = 0; j0 < J; j0 += nwarps) {
+                const int j = j0 + threadIdx.y;
+                const int * u = &y_qs[j*MMQ_TILE_Y_K + k01];
+                const float2 ds0 = y_ds[j*MMQ_Y_DS_F32_NE + k01/QI8_1 + 0];
+                const float2 ds1 = y_ds[j*MMQ_Y_DS_F32_NE + k01/QI8_1 + 1];
 
-#pragma unroll
-            for (int i0 = 0; i0 < I; i0 += warp_size) {
-                const int i = i0 + threadIdx.x;
-                const int * v = &x_qs[i*(QR5_K*MMQ_TILE_NE_K + 1) + k0];
                 int s0 = P104_MMQ_MAGIC_I;
                 int s1 = P104_MMQ_MAGIC_I;
 #pragma unroll
@@ -1028,10 +1030,10 @@ template <ggml_type type, int J, bool fallback> static __device__ __forceinline_
                     s1 = ggml_cuda_dp4a(v[QI8_1 + l], u[QI8_1 + l], s1);
                 }
                 float acc = sum[j0/nwarps*I/warp_size + i0/warp_size];
-                acc = fmaf(__int_as_float(s0) - P104_MMQ_MAGIC_F, wd[i0/warp_size][0]*ds0.x, acc);
-                acc = fmaf(__int_as_float(s1) - P104_MMQ_MAGIC_F, wd[i0/warp_size][1]*ds1.x, acc);
-                acc = fmaf(-wm[i0/warp_size][0], ds0.y, acc);
-                acc = fmaf(-wm[i0/warp_size][1], ds1.y, acc);
+                acc = fmaf(__int_as_float(s0) - P104_MMQ_MAGIC_F, wd[0]*ds0.x, acc);
+                acc = fmaf(__int_as_float(s1) - P104_MMQ_MAGIC_F, wd[1]*ds1.x, acc);
+                acc = fmaf(-wm[0], ds0.y, acc);
+                acc = fmaf(-wm[1], ds1.y, acc);
                 sum[j0/nwarps*I/warp_size + i0/warp_size] = acc;
             }
         }
