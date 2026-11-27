@@ -1,0 +1,15 @@
+{
+  "tag": "p104-llama:f60e8ba-20261127",
+  "image_id": "sha256:cfaece258174ab6988ef0adf58fa9c0c93dd541841d477a0a561b69077194454",
+  "git_commit": "f60e8baddae0eb14d795d09d4e65b1d8011312e5",
+  "dirty": false,
+  "patch": "",
+  "patch_sha256": "",
+  "built_utc": "2026-11-27T17:10:02Z",
+  "hashes": {
+    "/out/bin/llama-server": "34d33a3a81e013b6c0cffffa6645a4d9a5b037b7e3547191e53314ec153c02b7",
+    "/out/lib/libggml-cuda.so": "357791c6bc0925af0ed5863d41d4324e055871547ee75073053becfab9287501",
+    "/out/lib/libggml-cuda.so.1": "357791c6bc0925af0ed5863d41d4324e055871547ee75073053becfab9287501",
+    "/out/lib/libggml-cuda.so.1.0.0": "357791c6bc0925af0ed5863d41d4324e055871547ee75073053becfab9287501"
+  }
+}

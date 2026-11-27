@@ -1,0 +1,828 @@
+diff --git a/ggml/src/ggml-cuda/fattn-tile.cuh b/ggml/src/ggml-cuda/fattn-tile.cuh
+index f193a7a..e367c8d 100644
+--- a/ggml/src/ggml-cuda/fattn-tile.cuh
++++ b/ggml/src/ggml-cuda/fattn-tile.cuh
+@@ -1,5 +1,6 @@
+ #include "common.cuh"
+ #include "fattn-common.cuh"
++#include <type_traits>
+ 
+ // nbatch_fa == number of KQ rows to process per iteration
+ // nbatch_K == number of K columns to load in parallel for KQ calculation
+@@ -481,11 +482,11 @@ static __device__ __forceinline__ void flash_attn_tile_load_tile(
+ 
+ // Function that performs a single iteration in for the KQ matrix multiplication:
+ template <int warp_size, int nwarps, int ncols1, int ncols2, int DKQ, int nbatch_fa, int nbatch_K,
+-    bool use_logit_softcap, bool oob_check, typename T_vec_dot>
++    bool use_logit_softcap, bool oob_check, typename T_Q_tmp, typename T_KV_tmp>
+ static __device__ __forceinline__ void flash_attn_tile_iter_KQ(
+-        T_vec_dot   * const Q_tmp,
++        T_Q_tmp     * const Q_tmp,
+         const half2 * const __restrict__ K_h2,
+-        T_vec_dot   * const KV_tmp,
++        T_KV_tmp    * const KV_tmp,
+         const int stride_K2,
+         const int k_VKQ_0,
+         const int k_VKQ_sup,
+@@ -508,33 +509,16 @@ static __device__ __forceinline__ void flash_attn_tile_iter_KQ(
+     for (int k_KQ_1 = 0; k_KQ_1 < nbatch_K/2; k_KQ_1 += cpy_ne) {
+         __align__(16) half2 K_k[nbatch_fa/(np*warp_size)][cpy_ne];
+         __align__(16) half2 Q_k[cpw][cpy_ne];
+-#else
+-    static_assert(nbatch_K % cpy_ne == 0, "bad nbatch_K");
+-#pragma unroll
+-    for (int k_KQ_1 = 0; k_KQ_1 < nbatch_K; k_KQ_1 += cpy_ne) {
+-        __align__(16) float K_k[nbatch_fa/(np*warp_size)][cpy_ne];
+-        __align__(16) float Q_k[cpw][cpy_ne];
+-#endif // FAST_FP16_AVAILABLE
+ 
+ #pragma unroll
+         for (int i_KQ_0 = 0; i_KQ_0 < nbatch_fa; i_KQ_0 += np*warp_size) {
+             const int i_KQ = i_KQ_0 + (threadIdx.y % np)*warp_size + threadIdx.x;
+-
+-#ifdef FAST_FP16_AVAILABLE
+             ggml_cuda_memcpy_1<cpy_nb>(&K_k[i_KQ_0/(np*warp_size)], &KV_tmp[i_KQ*(nbatch_K/2 + cpy_ne) + k_KQ_1]);
+-#else
+-            ggml_cuda_memcpy_1<cpy_nb>(&K_k[i_KQ_0/(np*warp_size)], &KV_tmp[i_KQ*(nbatch_K   + cpy_ne) + k_KQ_1]);
+-#endif // FAST_FP16_AVAILABLE
+         }
+ #pragma unroll
+         for (int jc0 = 0; jc0 < cpw; ++jc0) {
+             const int jc = jc0 + (threadIdx.y / np)*cpw;
+-
+-#ifdef FAST_FP16_AVAILABLE
+             ggml_cuda_memcpy_1<cpy_nb>(&Q_k[jc0], &Q_tmp[jc*(DKQ/2) + k_KQ_0/2 + k_KQ_1]);
+-#else
+-            ggml_cuda_memcpy_1<cpy_nb>(&Q_k[jc0], &Q_tmp[jc* DKQ    + k_KQ_0   + k_KQ_1]);
+-#endif // FAST_FP16_AVAILABLE
+         }
+ 
+ #pragma unroll
+@@ -548,6 +532,57 @@ static __device__ __forceinline__ void flash_attn_tile_iter_KQ(
+             }
+         }
+     }
++#else
++    static_assert(nbatch_K % cpy_ne == 0, "bad nbatch_K");
++#pragma unroll
++    for (int k_KQ_1 = 0; k_KQ_1 < nbatch_K; k_KQ_1 += cpy_ne) {
++        __align__(16) float Q_k[cpw][cpy_ne];
++#pragma unroll
++        for (int jc0 = 0; jc0 < cpw; ++jc0) {
++            const int jc = jc0 + (threadIdx.y / np)*cpw;
++            ggml_cuda_memcpy_1<cpy_nb>(&Q_k[jc0], &Q_tmp[jc* DKQ    + k_KQ_0   + k_KQ_1]);
++        }
++
++        if constexpr (std::is_same_v<T_KV_tmp, half2>) {
++            static_assert((nbatch_K/2) % (cpy_ne/2) == 0, "bad nbatch_K/2");
++            __align__(8) half2 K_k[nbatch_fa/(np*warp_size)][cpy_ne/2];
++#pragma unroll
++            for (int i_KQ_0 = 0; i_KQ_0 < nbatch_fa; i_KQ_0 += np*warp_size) {
++                const int i_KQ = i_KQ_0 + (threadIdx.y % np)*warp_size + threadIdx.x;
++                ggml_cuda_memcpy_1<cpy_nb/2>(&K_k[i_KQ_0/(np*warp_size)], &KV_tmp[i_KQ*(nbatch_K/2 + cpy_ne) + k_KQ_1/2]);
++            }
++#pragma unroll
++            for (int i_KQ_0 = 0; i_KQ_0 < nbatch_fa; i_KQ_0 += np*warp_size) {
++#pragma unroll
++                for (int k = 0; k < cpy_ne/2; ++k) {
++                    const float2 kf = __half22float2(K_k[i_KQ_0/(np*warp_size)][k]);
++#pragma unroll
++                    for (int jc0 = 0; jc0 < cpw; ++jc0) {
++                        ggml_cuda_mad(KQ_acc[i_KQ_0/(np*warp_size)*cpw + jc0],
++                            kf, make_float2(Q_k[jc0][2*k], Q_k[jc0][2*k + 1]));
++                    }
++                }
++            }
++        } else {
++            __align__(16) float K_k[nbatch_fa/(np*warp_size)][cpy_ne];
++#pragma unroll
++            for (int i_KQ_0 = 0; i_KQ_0 < nbatch_fa; i_KQ_0 += np*warp_size) {
++                const int i_KQ = i_KQ_0 + (threadIdx.y % np)*warp_size + threadIdx.x;
++                ggml_cuda_memcpy_1<cpy_nb>(&K_k[i_KQ_0/(np*warp_size)], &KV_tmp[i_KQ*(nbatch_K   + cpy_ne) + k_KQ_1]);
++            }
++#pragma unroll
++            for (int i_KQ_0 = 0; i_KQ_0 < nbatch_fa; i_KQ_0 += np*warp_size) {
++#pragma unroll
++                for (int jc0 = 0; jc0 < cpw; ++jc0) {
++#pragma unroll
++                    for (int k = 0; k < cpy_ne; ++k) {
++                        ggml_cuda_mad(KQ_acc[i_KQ_0/(np*warp_size)*cpw + jc0], K_k[i_KQ_0/(np*warp_size)][k], Q_k[jc0][k]);
++                    }
++                }
++            }
++        }
++    }
++#endif // FAST_FP16_AVAILABLE
+ 
+     if (k_KQ_0 + nbatch_K < DKQ) {
+         __syncthreads(); // Sync not needed on last iteration.
+@@ -556,9 +591,9 @@ static __device__ __forceinline__ void flash_attn_tile_iter_KQ(
+ 
+ // Function that performs a single iteration of the main loop over up to nbatch_fa tokens.
+ template <int warp_size, int nwarps, int ncols1, int ncols2, int DKQ, int DV, int nbatch_fa, int nbatch_K,
+-    bool use_logit_softcap, bool oob_check, typename T_vec_dot, typename T_KQ, typename T_acc>
++    bool use_logit_softcap, bool oob_check, typename T_Q_tmp, typename T_KV_tmp, typename T_KQ, typename T_acc>
+ static __device__ __forceinline__ void flash_attn_tile_iter(
+-        T_vec_dot * const Q_tmp,
++        T_Q_tmp * const Q_tmp,
+         const half2 * const __restrict__ K_h2,
+         const half2 * const __restrict__ V_h2,
+         const half  * const __restrict__ mask,
+@@ -566,7 +601,7 @@ static __device__ __forceinline__ void flash_attn_tile_iter(
+         const float logit_softcap,
+         const float slope,
+         T_KQ      * const KQ,
+-        T_vec_dot * const KV_tmp,
++        T_KV_tmp  * const KV_tmp,
+         const int stride_K2,
+         const int stride_V2,
+         const int stride_mask,
+@@ -755,30 +790,61 @@ static __device__ __forceinline__ void flash_attn_tile_iter(
+             }
+         }
+ #else
++        if constexpr (std::is_same_v<T_KV_tmp, half2>) {
+ #pragma unroll
+-        for (int k1 = 0; k1 < nbatch_V; k1 += np) {
+-            __align__(16) float2 V_k[(DVp/2)/warp_size];
+-            __align__(16) float  KQ_k[cpw];
++            for (int k1 = 0; k1 < nbatch_V; k1 += np) {
++                __align__(16) half2 V_k[(DVp/2)/warp_size];
++                __align__(16) float KQ_k[cpw];
+ 
+-            constexpr int cpy_ne_D = cpy_ne < DVp/warp_size ? cpy_ne : DVp/warp_size;
++                constexpr int cpy_ne_D = cpy_ne/2 < (DVp/2)/warp_size ? cpy_ne/2 : (DVp/2)/warp_size;
+ #pragma unroll
+-            for (int i0 = 0; i0 < DVp; i0 += warp_size*cpy_ne_D) {
+-                ggml_cuda_memcpy_1<cpy_ne_D*4>(&V_k[i0/(2*warp_size)], &KV_tmp[(k1 + threadIdx.y % np)*DV + i0 + threadIdx.x*cpy_ne_D]);
+-            }
++                for (int i0 = 0; i0 < DVp/2; i0 += warp_size*cpy_ne_D) {
++                    ggml_cuda_memcpy_1<cpy_ne_D*4>(&V_k[i0/warp_size], &KV_tmp[(k1 + threadIdx.y % np)*(DV/2) + i0 + threadIdx.x*cpy_ne_D]);
++                }
+ #pragma unroll
+-            for (int jc_VKQ_0 = 0; jc_VKQ_0 < cpw; jc_VKQ_0 += KQ_cs) {
+-                const int jc_KQ = jc_VKQ_0/KQ_cs + (threadIdx.y / np)*(cpw/KQ_cs);
++                for (int jc_VKQ_0 = 0; jc_VKQ_0 < cpw; jc_VKQ_0 += KQ_cs) {
++                    const int jc_KQ = jc_VKQ_0/KQ_cs + (threadIdx.y / np)*(cpw/KQ_cs);
++
++                    ggml_cuda_memcpy_1<KQ_cs*sizeof(float)>(
++                        &KQ_k[jc_VKQ_0], KQ + jc_KQ*(nbatch_fa*KQ_cs) + (k0 + k1 + threadIdx.y % np)*KQ_cs);
++                }
+ 
+-                ggml_cuda_memcpy_1<KQ_cs*sizeof(float)>(
+-                    &KQ_k[jc_VKQ_0], KQ + jc_KQ*(nbatch_fa*KQ_cs) + (k0 + k1 + threadIdx.y % np)*KQ_cs);
++#pragma unroll
++                for (int i0 = 0; i0 < DVp/2; i0 += warp_size) {
++                    const float2 vf = __half22float2(V_k[i0/warp_size]);
++#pragma unroll
++                    for (int jc_VKQ_0 = 0; jc_VKQ_0 < cpw; ++jc_VKQ_0) {
++                        VKQ[jc_VKQ_0*((DVp/2)/warp_size) + i0/warp_size].x += vf.x*KQ_k[jc_VKQ_0];
++                        VKQ[jc_VKQ_0*((DVp/2)/warp_size) + i0/warp_size].y += vf.y*KQ_k[jc_VKQ_0];
++                    }
++                }
+             }
++        } else {
++#pragma unroll
++            for (int k1 = 0; k1 < nbatch_V; k1 += np) {
++                __align__(16) float2 V_k[(DVp/2)/warp_size];
++                __align__(16) float  KQ_k[cpw];
+ 
++                constexpr int cpy_ne_D = cpy_ne < DVp/warp_size ? cpy_ne : DVp/warp_size;
+ #pragma unroll
+-            for (int i0 = 0; i0 < DVp/2; i0 += warp_size) {
++                for (int i0 = 0; i0 < DVp; i0 += warp_size*cpy_ne_D) {
++                    ggml_cuda_memcpy_1<cpy_ne_D*4>(&V_k[i0/(2*warp_size)], &KV_tmp[(k1 + threadIdx.y % np)*DV + i0 + threadIdx.x*cpy_ne_D]);
++                }
+ #pragma unroll
+-                for (int jc_VKQ_0 = 0; jc_VKQ_0 < cpw; ++jc_VKQ_0) {
+-                    VKQ[jc_VKQ_0*((DVp/2)/warp_size) + i0/warp_size].x += V_k[i0/warp_size].x*KQ_k[jc_VKQ_0];
+-                    VKQ[jc_VKQ_0*((DVp/2)/warp_size) + i0/warp_size].y += V_k[i0/warp_size].y*KQ_k[jc_VKQ_0];
++                for (int jc_VKQ_0 = 0; jc_VKQ_0 < cpw; jc_VKQ_0 += KQ_cs) {
++                    const int jc_KQ = jc_VKQ_0/KQ_cs + (threadIdx.y / np)*(cpw/KQ_cs);
++
++                    ggml_cuda_memcpy_1<KQ_cs*sizeof(float)>(
++                        &KQ_k[jc_VKQ_0], KQ + jc_KQ*(nbatch_fa*KQ_cs) + (k0 + k1 + threadIdx.y % np)*KQ_cs);
++                }
++
++#pragma unroll
++                for (int i0 = 0; i0 < DVp/2; i0 += warp_size) {
++#pragma unroll
++                    for (int jc_VKQ_0 = 0; jc_VKQ_0 < cpw; ++jc_VKQ_0) {
++                        VKQ[jc_VKQ_0*((DVp/2)/warp_size) + i0/warp_size].x += V_k[i0/warp_size].x*KQ_k[jc_VKQ_0];
++                        VKQ[jc_VKQ_0*((DVp/2)/warp_size) + i0/warp_size].y += V_k[i0/warp_size].y*KQ_k[jc_VKQ_0];
++                    }
+                 }
+             }
+         }
+@@ -889,8 +955,15 @@ static __global__ void flash_attn_tile(
+     __shared__ half  KQ[ncols * nbatch_fa];
+     __align__(16) half2 VKQ[cpw * ((DVp/2)/warp_size)] = {{0.0f, 0.0f}};
+ #else
++    using T_KV_tmp = std::conditional_t<(ncols <= 8), half2, float>;
++    constexpr size_t kv_tmp_n_base = std::is_same_v<T_KV_tmp, half2>
++        ? (nbatch_fa * (nbatch_K/2 + cpy_ne) + (DVp - DV)/2)
++        : (nbatch_fa * (nbatch_K   + cpy_ne) + (DVp - DV));
++    constexpr size_t kv_tmp_n_comb = (np > 1)
++        ? (size_t) nwarps * DVp * (std::is_same_v<T_KV_tmp, half2> ? 2 : 1)
++        : 0;
+     __shared__ float Q_tmp[ncols * DKQ];
+-    __shared__ float KV_tmp[nbatch_fa * (nbatch_K + cpy_ne) + DVp-DV];
++    __shared__ T_KV_tmp KV_tmp[kv_tmp_n_base > kv_tmp_n_comb ? kv_tmp_n_base : kv_tmp_n_comb];
+     __shared__ float KQ[ncols * nbatch_fa];
+     __align__(16) float2 VKQ[cpw * ((DVp/2)/warp_size)] = {{0.0f, 0.0f}};
+ #endif // FAST_FP16_AVAILABLE
+@@ -987,9 +1060,8 @@ static __global__ void flash_attn_tile(
+ 
+     if constexpr (np > 1) {
+         static_assert(cpw == 1, "bad cpw");
+-        static_assert(nbatch_fa*nbatch_K >= nwarps*DVp, "KV_tmp too small");
+-
+ #ifdef FAST_FP16_AVAILABLE
++        static_assert(nbatch_fa*nbatch_K >= nwarps*DVp, "KV_tmp too small");
+         half2 * VKQ_combine    = (half2 *) KV_tmp;
+ #else
+         float * VKQ_combine    = (float *) KV_tmp;
+diff --git a/ggml/src/ggml-cuda/gated_delta_net.cu b/ggml/src/ggml-cuda/gated_delta_net.cu
+index 342dde8..9dc58c0 100644
+--- a/ggml/src/ggml-cuda/gated_delta_net.cu
++++ b/ggml/src/ggml-cuda/gated_delta_net.cu
+@@ -179,6 +179,149 @@ gated_delta_net_cuda(const float * q,
+     }
+ }
+ 
++template <bool keep_rs_t>
++__global__ void __launch_bounds__(128, 4)
++gated_delta_net_pascal_f4(
++        const float * __restrict__ q,
++        const float * __restrict__ k,
++        const float * __restrict__ v,
++        const float * __restrict__ g,
++        const float * __restrict__ beta,
++        const float * __restrict__ curr_state,
++        float * __restrict__       dst,
++        float * __restrict__       state,
++        int64_t       H,
++        int64_t       n_tokens,
++        int64_t       n_seqs,
++        int64_t       sq1,
++        int64_t       sq2,
++        int64_t       sq3,
++        int64_t       sv1,
++        int64_t       sv2,
++        int64_t       sv3,
++        int64_t       sb1,
++        int64_t       sb2,
++        int64_t       sb3,
++        const uint3   neqk1_magic,
++        const uint3   rq3_magic,
++        float         scale,
++        int64_t       state_slot_stride,
++        int           K) {
++    constexpr int S_v           = 128;
++    constexpr int cols_per_warp = 4;
++    constexpr int lanes_per_col = 8;
++    constexpr int n_vec         = 4; // 4 * float4 = 16 floats/lane
++    constexpr int T_TILE        = 8;
++
++    __shared__ float4 q_s[T_TILE][32];
++    __shared__ float4 k_s[T_TILE][32];
++    __shared__ float  g_s[T_TILE];
++    __shared__ float  b_s[T_TILE];
++
++    const uint32_t h_idx    = blockIdx.x;
++    const uint32_t sequence = blockIdx.y;
++
++    const int lane        = threadIdx.x;
++    const int warp        = threadIdx.y;
++    const int n_thr       = 32 * blockDim.y;
++    const int tid         = warp * 32 + lane;
++    const int col_in_warp = lane >> 3;
++    const int lane_in_col = lane & 7;
++    const int col         = (blockIdx.z * blockDim.y + warp) * cols_per_warp + col_in_warp;
++
++    const uint32_t iq1 = fastmodulo(h_idx, neqk1_magic);
++    const uint32_t iq3 = fastdiv(sequence, rq3_magic);
++
++    const float * q_head    = q + iq3 * sq3 + iq1 * sq1;
++    const float * k_head    = k + iq3 * sq3 + iq1 * sq1;
++    const float * v_head    = v + sequence * sv3 + h_idx * sv1;
++    const float * g_head    = g + sequence * sb3 + h_idx * sb1;
++    const float * b_head    = beta + sequence * sb3 + h_idx * sb1;
++
++    const int64_t s_base    = (sequence * H + h_idx) * S_v * S_v;
++    const float * s_in      = curr_state + s_base + col * S_v;
++    float *       s_out     = state + s_base;
++    float *       attn_data = dst + (sequence * n_tokens * H + h_idx) * S_v;
++
++    float4 s_shard[n_vec];
++#pragma unroll
++    for (int c = 0; c < n_vec; ++c) {
++        s_shard[c] = *reinterpret_cast<const float4 *>(s_in + (c * lanes_per_col + lane_in_col) * 4);
++    }
++
++    for (int64_t t0 = 0; t0 < n_tokens; t0 += T_TILE) {
++        const int n_valid = (n_tokens - t0 < T_TILE) ? (int) (n_tokens - t0) : T_TILE;
++        for (int idx = tid; idx < n_valid * 32; idx += n_thr) {
++            const int tt = idx >> 5;
++            const int d4 = idx & 31;
++            q_s[tt][d4] = __ldg(reinterpret_cast<const float4 *>(q_head + (t0 + tt) * sq2) + d4);
++            k_s[tt][d4] = __ldg(reinterpret_cast<const float4 *>(k_head + (t0 + tt) * sq2) + d4);
++        }
++        if (tid < n_valid) {
++            g_s[tid] = expf(__ldg(g_head + (t0 + tid) * sb2));
++            b_s[tid] = __ldg(b_head + (t0 + tid) * sb2);
++        }
++        __syncthreads();
++
++        for (int u = 0; u < n_valid; ++u) {
++            const float g_val    = g_s[u];
++            const float beta_val = b_s[u];
++
++            float4 k_reg[n_vec];
++            float4 q_reg[n_vec];
++            float kv_shard = 0.f;
++#pragma unroll
++            for (int c = 0; c < n_vec; ++c) {
++                const int d4 = c * lanes_per_col + lane_in_col;
++                k_reg[c] = k_s[u][d4];
++                q_reg[c] = q_s[u][d4];
++                kv_shard += s_shard[c].x * k_reg[c].x + s_shard[c].y * k_reg[c].y
++                          + s_shard[c].z * k_reg[c].z + s_shard[c].w * k_reg[c].w;
++            }
++            const float kv_col = warp_reduce_sum<lanes_per_col>(kv_shard);
++            const float v_col  = __ldg(v_head + (t0 + u) * sv2 + col);
++            const float delta  = (v_col - g_val * kv_col) * beta_val;
++
++            float attn_partial = 0.f;
++#pragma unroll
++            for (int c = 0; c < n_vec; ++c) {
++                s_shard[c].x = g_val * s_shard[c].x + k_reg[c].x * delta;
++                s_shard[c].y = g_val * s_shard[c].y + k_reg[c].y * delta;
++                s_shard[c].z = g_val * s_shard[c].z + k_reg[c].z * delta;
++                s_shard[c].w = g_val * s_shard[c].w + k_reg[c].w * delta;
++                attn_partial += s_shard[c].x * q_reg[c].x + s_shard[c].y * q_reg[c].y
++                              + s_shard[c].z * q_reg[c].z + s_shard[c].w * q_reg[c].w;
++            }
++            const float attn_col = warp_reduce_sum<lanes_per_col>(attn_partial);
++            if (lane_in_col == 0) {
++                attn_data[col] = attn_col * scale;
++            }
++            attn_data += S_v * H;
++
++            if constexpr (keep_rs_t) {
++                const int target_slot = (int) (n_tokens - 1 - (t0 + u));
++                if (target_slot >= 0 && target_slot < K) {
++                    float * slot_state = s_out + target_slot * state_slot_stride + col * S_v;
++#pragma unroll
++                    for (int c = 0; c < n_vec; ++c) {
++                        *reinterpret_cast<float4 *>(slot_state + (c * lanes_per_col + lane_in_col) * 4) = s_shard[c];
++                    }
++                }
++            }
++        }
++        __syncthreads();
++    }
++
++    if constexpr (!keep_rs_t) {
++        float * final_state = s_out + col * S_v;
++#pragma unroll
++        for (int c = 0; c < n_vec; ++c) {
++            *reinterpret_cast<float4 *>(final_state + (c * lanes_per_col + lane_in_col) * 4) = s_shard[c];
++        }
++    }
++    GGML_UNUSED_VARS(n_seqs, sq1, sq3, sv3, sb1, sb3);
++}
++
+ template <bool KDA, bool keep_rs_t>
+ static void launch_gated_delta_net(
+         const float * q_d, const float * k_d, const float * v_d,
+@@ -361,6 +504,32 @@ static void ggml_cuda_op_gated_delta_net_impl(
+             return;
+         }
+     }
++    const auto & dev_info = ggml_cuda_info().devices[ctx.device];
++    if (dev_info.warp_size == 32 && S_v == 128 && !kda && n_tokens >= 16 &&
++            (sq1 & 3) == 0 && (sq2 & 3) == 0 && (sq3 & 3) == 0 && (state_slot_stride & 3) == 0 &&
++            ((((uintptr_t) q_d | (uintptr_t) k_d | (uintptr_t) s_d | (uintptr_t) state_d)) & 15) == 0) {
++        int num_warps = 4;
++        while (num_warps > 1 && H * n_seqs * (128 / (4 * num_warps)) < dev_info.nsm) {
++            num_warps /= 2;
++        }
++        dim3 grid_dims(H, n_seqs, 128 / (4 * num_warps));
++        dim3 block_dims(32, num_warps, 1);
++        const uint3 neqk1_magic = init_fastdiv_values(neqk1);
++        const uint3 rq3_magic   = init_fastdiv_values(rq3);
++        const ggml_cuda_kernel_launch_params lp(grid_dims, block_dims, 0, stream);
++        if (keep_rs) {
++            ggml_cuda_kernel_launch(gated_delta_net_pascal_f4<true>, lp,
++                q_d, k_d, v_d, g_d, b_d, s_d, dst_d, state_d, H,
++                n_tokens, n_seqs, sq1, sq2, sq3, sv1, sv2, sv3,
++                sb1, sb2, sb3, neqk1_magic, rq3_magic, scale, state_slot_stride, K);
++        } else {
++            ggml_cuda_kernel_launch(gated_delta_net_pascal_f4<false>, lp,
++                q_d, k_d, v_d, g_d, b_d, s_d, dst_d, state_d, H,
++                n_tokens, n_seqs, sq1, sq2, sq3, sv1, sv2, sv3,
++                sb1, sb2, sb3, neqk1_magic, rq3_magic, scale, state_slot_stride, K);
++        }
++        return;
++    }
+     if (kda) {
+         if (keep_rs) {
+             launch_gated_delta_net<true, true>(q_d, k_d, v_d, g_d, b_d, s_d, dst_d, state_d,
+diff --git a/ggml/src/ggml-cuda/mmvq.cu b/ggml/src/ggml-cuda/mmvq.cu
+index 3353f37..210afd0 100644
+--- a/ggml/src/ggml-cuda/mmvq.cu
++++ b/ggml/src/ggml-cuda/mmvq.cu
+@@ -770,17 +770,17 @@ static constexpr __device__ int get_mmvq_mmid_max_batch_for_device() {
+ 
+ // The wide vec_dot is used for up to P104_WIDE_MAX_NCOLS columns; with 4..8 columns it was slower than vdr 2.
+ static constexpr __host__ __device__ int get_vdr_mmvq_tbl(ggml_type type, mmvq_parameter_table_id table_id, int ncols_dst, bool small_k = false) {
+-    if (small_k) {
++    if (small_k && !(table_id == MMVQ_PARAMETERS_PASCAL && ncols_dst == 1 && mmvq_pascal_tuned(type))) {
+         return get_vdr_mmvq(type);
+     }
+     if (table_id == MMVQ_PARAMETERS_PASCAL && ncols_dst <= 3 && type == GGML_TYPE_Q6_K) {
+-        return ncols_dst == 1 ? P104_Q6_VDR : P104_Q6_VDR_N23;
++        return (ncols_dst == 1 || small_k) ? P104_Q6_VDR : P104_Q6_VDR_N23;
+     }
+     return table_id == MMVQ_PARAMETERS_PASCAL && ncols_dst <= P104_WIDE_MAX_NCOLS && mmvq_pascal_wide(type) ? 8 : get_vdr_mmvq(type);
+ }
+ 
+ static constexpr __device__ vec_dot_q_cuda_t get_vec_dot_q_cuda_tbl(ggml_type type, mmvq_parameter_table_id table_id, int ncols_dst, bool small_k = false) {
+-    if (small_k) {
++    if (small_k && !(table_id == MMVQ_PARAMETERS_PASCAL && ncols_dst == 1 && mmvq_pascal_tuned(type))) {
+         return get_vec_dot_q_cuda(type);
+     }
+     if (table_id == MMVQ_PARAMETERS_PASCAL && ncols_dst <= P104_WIDE_MAX_NCOLS) {
+@@ -949,7 +949,10 @@ static constexpr __host__ __device__ int calc_nwarps(ggml_type type, int ncols_d
+         return calc_nwarps(type, ncols_dst, MMVQ_PARAMETERS_GENERIC);
+     }
+     if (table_id == MMVQ_PARAMETERS_PASCAL) {
+-        if (ncols_dst == 1 && !small_k && mmvq_pascal_tuned(type)) {
++        if (ncols_dst == 1 && mmvq_pascal_tuned(type)) {
++            if (small_k) {
++                return 1;
++            }
+             return type == GGML_TYPE_Q6_K ? P104_NW_Q6 : P104_NW;
+         }
+         if (ncols_dst >= 2 && ncols_dst <= 3 && mmvq_pascal_tuned(type)) {
+@@ -978,7 +981,10 @@ static constexpr __host__ __device__ bool mmvq_two_rows_ncols1(ggml_type type) {
+ }
+ 
+ static constexpr __host__ __device__ int calc_rows_per_block(ggml_type type, int ncols_dst, int table_id, bool small_k = false, int nwarps = 1) {
+-    if (table_id == MMVQ_PARAMETERS_PASCAL && ncols_dst == 1 && !small_k && mmvq_pascal_tuned(type)) {
++    if (table_id == MMVQ_PARAMETERS_PASCAL && ncols_dst == 1 && mmvq_pascal_tuned(type)) {
++        if (small_k) {
++            return 4;
++        }
+         return type == GGML_TYPE_Q6_K ? P104_RPB_Q6 : P104_RPB;
+     }
+     if (table_id == MMVQ_PARAMETERS_PASCAL && ncols_dst >= 2 && ncols_dst <= 3 && mmvq_pascal_tuned(type)) {
+@@ -1127,14 +1133,85 @@ static __device__ __forceinline__ void p104_mmvq_kloop_q4_col(
+     }
+ }
+ 
+-// p104 v15: single-column hoisted-y + magic-float k-loop for Q4_K/Q5_K on Pascal (ncols_dst == 1, no fusion).
+-// Loads q8_1 u[2][8] once via int4 __ldg, computes exact sumi_m once across rows_per_cuda_block, and uses magic-float.
+-template <ggml_type type, int rows_per_cuda_block>
++// p104 v17: per-row Q4_K/Q5_K dot product with hoisted q8_1 u[2][QI8_1] and magic-float scale decoding.
++template <ggml_type type>
++static __device__ __forceinline__ float p104_mmvq_q45_n1_row(
++        const void * __restrict__ vx, const int row_kbx, const int j_sub,
++        const int (&u)[2][QI8_1], const float (&d8)[2], const float (&fsum_m)[2]) {
++    int v[8];
++    int vh[8];
++    const uint16_t * scales;
++    float2 dmf;
++    if constexpr (type == GGML_TYPE_Q4_K) {
++        const block_q4_K * bq = (const block_q4_K *) vx + row_kbx;
++        const int4 * q4 = (const int4 *) (bq->qs + 32 * j_sub);
++        const int4 v0 = __ldg(q4 + 0);
++        const int4 v1 = __ldg(q4 + 1);
++        v[0] = v0.x; v[1] = v0.y; v[2] = v0.z; v[3] = v0.w;
++        v[4] = v1.x; v[5] = v1.y; v[6] = v1.z; v[7] = v1.w;
++        scales = (const uint16_t *) bq->scales;
++        dmf = __half22float2(__ldg(&bq->dm));
++    } else {
++        const block_q5_K * bq = (const block_q5_K *) vx + row_kbx;
++        const int4 * q5 = (const int4 *) (bq->qs + 32 * j_sub);
++        const int4 * qh = (const int4 *) bq->qh;
++        const int4 v0 = __ldg(q5 + 0);
++        const int4 v1 = __ldg(q5 + 1);
++        const int4 h0 = __ldg(qh + 0);
++        const int4 h1 = __ldg(qh + 1);
++        v[0] = v0.x; v[1] = v0.y; v[2] = v0.z; v[3] = v0.w;
++        v[4] = v1.x; v[5] = v1.y; v[6] = v1.z; v[7] = v1.w;
++        vh[0] = h0.x >> (2 * j_sub); vh[1] = h0.y >> (2 * j_sub);
++        vh[2] = h0.z >> (2 * j_sub); vh[3] = h0.w >> (2 * j_sub);
++        vh[4] = h1.x >> (2 * j_sub); vh[5] = h1.y >> (2 * j_sub);
++        vh[6] = h1.z >> (2 * j_sub); vh[7] = h1.w >> (2 * j_sub);
++        scales = (const uint16_t *) bq->scales;
++        dmf = __half22float2(__ldg(&bq->dm));
++    }
++    const int jm = j_sub & 1;
++    const uint32_t s0 = __ldg(scales + jm + 0);
++    const uint32_t s2 = __ldg(scales + jm + 2);
++    const uint32_t s4 = __ldg(scales + jm + 4);
++    const uint32_t hi = (uint32_t) -(int32_t) (j_sub >= 2);
++    const uint32_t a0 = ((s0 & 0x3f3f) & ~hi) | ((((s4 >> 0) & 0x0f0f) | ((s0 & 0xc0c0) >> 2)) & hi);
++    const uint32_t a1 = ((s2 & 0x3f3f) & ~hi) | ((((s4 >> 4) & 0x0f0f) | ((s2 & 0xc0c0) >> 2)) & hi);
++    const float wd[2] = {
++        dmf.x * (__int_as_float(P104_MMVQ_MAGIC_I | (a0 & 0xff)) - P104_MMVQ_MAGIC_F),
++        dmf.x * (__int_as_float(P104_MMVQ_MAGIC_I | ((a0 >> 8) & 0xff)) - P104_MMVQ_MAGIC_F)
++    };
++    const float wm[2] = {
++        dmf.y * (__int_as_float(P104_MMVQ_MAGIC_I | (a1 & 0xff)) - P104_MMVQ_MAGIC_F),
++        dmf.y * (__int_as_float(P104_MMVQ_MAGIC_I | ((a1 >> 8) & 0xff)) - P104_MMVQ_MAGIC_F)
++    };
++
++    float row_sum = 0.0f;
++#pragma unroll
++    for (int i_sub = 0; i_sub < 2; ++i_sub) {
++        int sumi_d = P104_MMVQ_MAGIC_I;
++#pragma unroll
++        for (int l = 0; l < QI8_1; ++l) {
++            int vl = (v[l] >> (4 * i_sub)) & 0x0F0F0F0F;
++            if constexpr (type == GGML_TYPE_Q5_K) {
++                vl |= (vh[l] << (4 - i_sub)) & 0x10101010;
++            }
++            sumi_d = ggml_cuda_dp4a(vl, u[i_sub][l], sumi_d);
++        }
++        const float fd = __int_as_float(sumi_d) - P104_MMVQ_MAGIC_F;
++        row_sum = fmaf(fd, wd[i_sub] * d8[i_sub], row_sum);
++        row_sum = fmaf(-wm[i_sub], fsum_m[i_sub], row_sum);
++    }
++    return row_sum;
++}
++
++// p104 v15/v17: single-column hoisted-y + magic-float k-loop for Q4_K/Q5_K on Pascal (ncols_dst == 1, optional gate fusion).
++// Loads q8_1 u[2][8] once via int4 __ldg, computes exact sumi_m once across rows_per_cuda_block (and gate weights), and uses magic-float.
++template <ggml_type type, int rows_per_cuda_block, bool has_fusion>
+ static __device__ __forceinline__ void p104_mmvq_kloop_q45_n1(
+-        const void * __restrict__ vx, const block_q8_1 * __restrict__ y,
++        const void * __restrict__ vx, const void * __restrict__ vgate, const bool use_gate,
++        const block_q8_1 * __restrict__ y,
+         const int tid, const int blocks_per_row_x, const int blocks_per_iter,
+         const int kbx_offset, const int stride_row_x,
+-        float (&tmp)[1][rows_per_cuda_block]) {
++        float (&tmp)[1][rows_per_cuda_block], float (&tmp_gate)[1][rows_per_cuda_block]) {
+     constexpr int qk = ggml_cuda_type_traits<type>::qk;
+     constexpr int qi = ggml_cuda_type_traits<type>::qi;
+     constexpr int vdr = 8;
+@@ -1166,69 +1243,12 @@ static __device__ __forceinline__ void p104_mmvq_kloop_q45_n1(
+ #pragma unroll
+         for (int r = 0; r < rows_per_cuda_block; ++r) {
+             const int row_kbx = kbx_offset + r * stride_row_x + kbx;
+-            int v[8];
+-            int vh[8];
+-            const uint16_t * scales;
+-            float2 dmf;
+-            if constexpr (type == GGML_TYPE_Q4_K) {
+-                const block_q4_K * bq = (const block_q4_K *) vx + row_kbx;
+-                const int4 * q4 = (const int4 *) (bq->qs + 32 * j_sub);
+-                const int4 v0 = __ldg(q4 + 0);
+-                const int4 v1 = __ldg(q4 + 1);
+-                v[0] = v0.x; v[1] = v0.y; v[2] = v0.z; v[3] = v0.w;
+-                v[4] = v1.x; v[5] = v1.y; v[6] = v1.z; v[7] = v1.w;
+-                scales = (const uint16_t *) bq->scales;
+-                dmf = __half22float2(__ldg(&bq->dm));
+-            } else {
+-                const block_q5_K * bq = (const block_q5_K *) vx + row_kbx;
+-                const int4 * q5 = (const int4 *) (bq->qs + 32 * j_sub);
+-                const int4 * qh = (const int4 *) bq->qh;
+-                const int4 v0 = __ldg(q5 + 0);
+-                const int4 v1 = __ldg(q5 + 1);
+-                const int4 h0 = __ldg(qh + 0);
+-                const int4 h1 = __ldg(qh + 1);
+-                v[0] = v0.x; v[1] = v0.y; v[2] = v0.z; v[3] = v0.w;
+-                v[4] = v1.x; v[5] = v1.y; v[6] = v1.z; v[7] = v1.w;
+-                vh[0] = h0.x >> (2 * j_sub); vh[1] = h0.y >> (2 * j_sub);
+-                vh[2] = h0.z >> (2 * j_sub); vh[3] = h0.w >> (2 * j_sub);
+-                vh[4] = h1.x >> (2 * j_sub); vh[5] = h1.y >> (2 * j_sub);
+-                vh[6] = h1.z >> (2 * j_sub); vh[7] = h1.w >> (2 * j_sub);
+-                scales = (const uint16_t *) bq->scales;
+-                dmf = __half22float2(__ldg(&bq->dm));
+-            }
+-            const int jm = j_sub & 1;
+-            const uint32_t s0 = __ldg(scales + jm + 0);
+-            const uint32_t s2 = __ldg(scales + jm + 2);
+-            const uint32_t s4 = __ldg(scales + jm + 4);
+-            const uint32_t hi = (uint32_t) -(int32_t) (j_sub >= 2);
+-            const uint32_t a0 = ((s0 & 0x3f3f) & ~hi) | ((((s4 >> 0) & 0x0f0f) | ((s0 & 0xc0c0) >> 2)) & hi);
+-            const uint32_t a1 = ((s2 & 0x3f3f) & ~hi) | ((((s4 >> 4) & 0x0f0f) | ((s2 & 0xc0c0) >> 2)) & hi);
+-            const float wd[2] = {
+-                dmf.x * (__int_as_float(P104_MMVQ_MAGIC_I | (a0 & 0xff)) - P104_MMVQ_MAGIC_F),
+-                dmf.x * (__int_as_float(P104_MMVQ_MAGIC_I | ((a0 >> 8) & 0xff)) - P104_MMVQ_MAGIC_F)
+-            };
+-            const float wm[2] = {
+-                dmf.y * (__int_as_float(P104_MMVQ_MAGIC_I | (a1 & 0xff)) - P104_MMVQ_MAGIC_F),
+-                dmf.y * (__int_as_float(P104_MMVQ_MAGIC_I | ((a1 >> 8) & 0xff)) - P104_MMVQ_MAGIC_F)
+-            };
+-
+-            float row_sum = 0.0f;
+-#pragma unroll
+-            for (int i_sub = 0; i_sub < 2; ++i_sub) {
+-                int sumi_d = P104_MMVQ_MAGIC_I;
+-#pragma unroll
+-                for (int l = 0; l < QI8_1; ++l) {
+-                    int vl = (v[l] >> (4 * i_sub)) & 0x0F0F0F0F;
+-                    if constexpr (type == GGML_TYPE_Q5_K) {
+-                        vl |= (vh[l] << (4 - i_sub)) & 0x10101010;
+-                    }
+-                    sumi_d = ggml_cuda_dp4a(vl, u[i_sub][l], sumi_d);
++            tmp[0][r] += p104_mmvq_q45_n1_row<type>(vx, row_kbx, j_sub, u, d8, fsum_m);
++            if constexpr (has_fusion) {
++                if (use_gate) {
++                    tmp_gate[0][r] += p104_mmvq_q45_n1_row<type>(vgate, row_kbx, j_sub, u, d8, fsum_m);
+                 }
+-                const float fd = __int_as_float(sumi_d) - P104_MMVQ_MAGIC_F;
+-                row_sum = fmaf(fd, wd[i_sub] * d8[i_sub], row_sum);
+-                row_sum = fmaf(-wm[i_sub], fsum_m[i_sub], row_sum);
+             }
+-            tmp[0][r] += row_sum;
+         }
+     }
+ }
+@@ -1550,17 +1570,17 @@ static __global__ void mul_mat_vec_q(
+     const block_q8_1 * y = ((const block_q8_1 *) vy) + sample_y*stride_sample_y + channel_y*stride_channel_y;
+     const int kbx_offset = sample_x*stride_sample_x + channel_x*stride_channel_x + row0*stride_row_x;
+ 
+-    if constexpr (table_id == MMVQ_PARAMETERS_PASCAL && !has_fusion && !small_k && ncols_dst == 1 &&
+-                  ((type == GGML_TYPE_Q4_K && !has_ids) || type == GGML_TYPE_Q5_K)) {
+-        p104_mmvq_kloop_q45_n1<type, rows_per_cuda_block>(
+-            vx, y, tid, blocks_per_row_x, blocks_per_iter, kbx_offset, stride_row_x, tmp);
++    if constexpr (table_id == MMVQ_PARAMETERS_PASCAL && ncols_dst == 1 &&
++                  ((type == GGML_TYPE_Q4_K && (!has_ids || has_fusion)) || type == GGML_TYPE_Q5_K)) {
++        p104_mmvq_kloop_q45_n1<type, rows_per_cuda_block, has_fusion>(
++            vx, vgate, use_gate, y, tid, blocks_per_row_x, blocks_per_iter, kbx_offset, stride_row_x, tmp, tmp_gate);
+     } else if constexpr (table_id == MMVQ_PARAMETERS_PASCAL && !has_fusion && !small_k && type == GGML_TYPE_Q4_K && ncols_dst == 3) {
+         p104_mmvq_kloop_q4_col<ncols_dst, rows_per_cuda_block>(
+             vx, y, tid, blocks_per_row_x, blocks_per_iter, kbx_offset, stride_row_x, stride_col_y, tmp);
+-    } else if constexpr (table_id == MMVQ_PARAMETERS_PASCAL && !has_fusion && !small_k && (type == GGML_TYPE_Q5_K || (type == GGML_TYPE_Q4_K && has_ids)) && ncols_dst <= P104_WIDE_MAX_NCOLS) {
++    } else if constexpr (table_id == MMVQ_PARAMETERS_PASCAL && !has_fusion && ((!small_k && type == GGML_TYPE_Q5_K) || (type == GGML_TYPE_Q4_K && has_ids && (!small_k || ncols_dst == 1))) && ncols_dst <= P104_WIDE_MAX_NCOLS) {
+         p104_mmvq_kloop_q45<type, ncols_dst, rows_per_cuda_block>(
+             vx, y, tid, blocks_per_row_x, blocks_per_iter, kbx_offset, stride_row_x, stride_col_y, tmp);
+-    } else if constexpr (table_id == MMVQ_PARAMETERS_PASCAL && !has_fusion && !small_k && type == GGML_TYPE_Q6_K && ncols_dst == 1) {
++    } else if constexpr (table_id == MMVQ_PARAMETERS_PASCAL && !has_fusion && type == GGML_TYPE_Q6_K && ncols_dst == 1) {
+         p104_mmvq_kloop_q6<ncols_dst, rows_per_cuda_block, vdr>(
+             vx, y, tid, blocks_per_row_x, blocks_per_iter, kbx_offset, stride_row_x, stride_col_y, tmp);
+     } else {
+@@ -1611,23 +1631,25 @@ static __global__ void mul_mat_vec_q(
+     __shared__ float tmp_shared[nwarps-1 > 0 ? nwarps-1 : 1][ncols_dst][rows_per_cuda_block][warp_size];
+     [[maybe_unused]] __shared__ float tmp_shared_gate[(has_fusion && (nwarps-1 > 0)) ? nwarps-1 : 1][ncols_dst][rows_per_cuda_block][warp_size];
+ 
+-    if (threadIdx.y > 0) {
++    if constexpr (nwarps > 1) {
++        if (threadIdx.y > 0) {
+ #pragma unroll
+-        for (int j = 0; j < ncols_dst; ++j) {
++            for (int j = 0; j < ncols_dst; ++j) {
+ #pragma unroll
+-            for (int i = 0; i < rows_per_cuda_block; ++i) {
+-                tmp_shared[threadIdx.y-1][j][i][threadIdx.x] = tmp[j][i];
+-                if constexpr (has_fusion) {
+-                    if (use_gate) {
+-                        tmp_shared_gate[threadIdx.y-1][j][i][threadIdx.x] = tmp_gate[j][i];
++                for (int i = 0; i < rows_per_cuda_block; ++i) {
++                    tmp_shared[threadIdx.y-1][j][i][threadIdx.x] = tmp[j][i];
++                    if constexpr (has_fusion) {
++                        if (use_gate) {
++                            tmp_shared_gate[threadIdx.y-1][j][i][threadIdx.x] = tmp_gate[j][i];
++                        }
+                     }
+                 }
+             }
+         }
+-    }
+-    __syncthreads();
+-    if (threadIdx.y > 0) {
+-        return;
++        __syncthreads();
++        if (threadIdx.y > 0) {
++            return;
++        }
+     }
+ 
+     dst += sample_dst*stride_sample_dst + channel_dst*stride_channel_dst + row0;
+@@ -1637,12 +1659,14 @@ static __global__ void mul_mat_vec_q(
+     for (int j = 0; j < ncols_dst; ++j) {
+ #pragma unroll
+         for (int i = 0; i < rows_per_cuda_block; ++i) {
++            if constexpr (nwarps > 1) {
+ #pragma unroll
+-            for (int l = 0; l < nwarps-1; ++l) {
+-                tmp[j][i] += tmp_shared[l][j][i][threadIdx.x];
+-                if constexpr (has_fusion) {
+-                    if (use_gate) {
+-                        tmp_gate[j][i] += tmp_shared_gate[l][j][i][threadIdx.x];
++                for (int l = 0; l < nwarps-1; ++l) {
++                    tmp[j][i] += tmp_shared[l][j][i][threadIdx.x];
++                    if constexpr (has_fusion) {
++                        if (use_gate) {
++                            tmp_gate[j][i] += tmp_shared_gate[l][j][i][threadIdx.x];
++                        }
+                     }
+                 }
+             }
+@@ -1702,7 +1726,7 @@ static __global__ void mul_mat_vec_q(
+ // Grid: (ceil(nrows_x / c_rows_per_block), nchannels_dst)
+ // Block: (warp_size, ncols_dst) - each warp handles one token independently.
+ // No shared memory reduction needed since each warp works alone.
+-template <ggml_type type, int c_rows_per_block, bool has_fusion = false>
++template <ggml_type type, int c_rows_per_block, bool has_fusion = false, bool p104_wide = false>
+ __launch_bounds__(get_mmvq_mmid_max_batch_for_device<type>()*ggml_cuda_get_physical_warp_size(), 1)
+ static __global__ void mul_mat_vec_q_moe(
+         const void * vx_ptr, const void * vy_ptr, const int32_t * ids_ptr, const ggml_cuda_mm_fusion_args_device fusion,
+@@ -1718,10 +1742,17 @@ static __global__ void mul_mat_vec_q_moe(
+ 
+     constexpr int qk  = ggml_cuda_type_traits<type>::qk;
+     constexpr int qi  = ggml_cuda_type_traits<type>::qi;
+-    constexpr int vdr = get_vdr_mmvq(type);
++    constexpr bool use_p104_wide = p104_wide && mmvq_pascal_tuned(type);
++    constexpr int vdr = use_p104_wide
++        ? (type == GGML_TYPE_Q6_K ? P104_Q6_VDR : 8)
++        : get_vdr_mmvq(type);
+     constexpr int warp_size = ggml_cuda_get_physical_warp_size();
+ 
+-    constexpr vec_dot_q_cuda_t vec_dot_q_cuda = get_vec_dot_q_cuda(type);
++    constexpr vec_dot_q_cuda_t vec_dot_q_cuda = use_p104_wide
++        ? (type == GGML_TYPE_Q4_K ? vec_dot_q4_K_q8_1_wide<true>
++         : type == GGML_TYPE_Q5_K ? vec_dot_q5_K_q8_1_wide<true>
++         : vec_dot_q6_K_q8_1_v<P104_Q6_VDR, false>)
++        : get_vec_dot_q_cuda(type);
+ 
+     const bool shared_expert = has_fusion && fusion.shared_up && blockIdx.y == gridDim.y - 1;
+     if (shared_expert) {
+@@ -1894,7 +1925,7 @@ static void mul_mat_vec_q_switch_fusion(
+     GGML_ASSERT(!has_fusion && "fusion only supported for ncols_dst=1");
+ 
+     const ggml_cuda_kernel_launch_params launch_params = ggml_cuda_kernel_launch_params(block_nums, block_dims, nbytes_shared, stream);
+-    if constexpr (c_ncols_dst == 1 && !small_k && type == GGML_TYPE_Q4_K) {
++    if constexpr (c_ncols_dst == 1 && type == GGML_TYPE_Q4_K) {
+         if (ids != nullptr) {
+             ggml_cuda_kernel_launch(mul_mat_vec_q<type, c_ncols_dst, false, small_k, halve_iters, true>, launch_params,
+                 vx, vy, ids, fusion, dst, ncols_x, nchannels_y, stride_row_x, stride_col_y, stride_col_dst,
+@@ -1916,7 +1947,7 @@ static void mul_mat_vec_q_moe_launch(
+         const uint32_t stride_row_x, const uint32_t stride_col_y, const uint32_t stride_col_dst,
+         const uint32_t stride_channel_x, const uint32_t stride_channel_y, const uint32_t stride_channel_dst,
+         const uint32_t ncols_dst, const uint32_t ids_stride,
+-        const int warp_size, const int nchannels_dst, cudaStream_t stream) {
++        const int warp_size, const int nchannels_dst, const mmvq_parameter_table_id table_id, cudaStream_t stream) {
+ 
+     constexpr int rows_per_block = 2; // 2 gives best perf based on tuning
+     const int64_t nblocks_rows = (nrows_x + rows_per_block - 1) / rows_per_block;
+@@ -1926,19 +1957,38 @@ static void mul_mat_vec_q_moe_launch(
+ 
+     const bool has_fusion = fusion.gate != nullptr || fusion.x_bias != nullptr || fusion.gate_bias != nullptr ||
+                             fusion.x_scale != nullptr || fusion.gate_scale != nullptr;
++    const bool aligned16 = ((((uintptr_t) vx | (uintptr_t) fusion.gate | (uintptr_t) fusion.shared_up | (uintptr_t) fusion.shared_gate) & 15) == 0);
++    const bool use_p104_wide = (table_id == MMVQ_PARAMETERS_PASCAL) && (
++        (mmvq_pascal_wide(type) && ncols_x >= 2048 && aligned16) ||
++        (type == GGML_TYPE_Q6_K && ncols_x >= 512));
+ 
+-    if (has_fusion) {
+-        ggml_cuda_kernel_launch(mul_mat_vec_q_moe<type, rows_per_block, true>, launch_params,
++    auto launch_moe = [&](auto c_fusion, auto c_wide) {
++        ggml_cuda_kernel_launch(mul_mat_vec_q_moe<type, rows_per_block, c_fusion(), c_wide()>, launch_params,
+             vx, vy, ids, fusion, dst, ncols_x, nchannels_y, nrows_x,
+             stride_row_x, stride_col_y, stride_col_dst,
+             stride_channel_x, stride_channel_y, stride_channel_dst,
+             ncols_dst, ids_stride);
++    };
++    if constexpr (mmvq_pascal_tuned(type)) {
++        if (has_fusion) {
++            if (use_p104_wide) {
++                launch_moe(std::true_type{}, std::true_type{});
++            } else {
++                launch_moe(std::true_type{}, std::false_type{});
++            }
++        } else {
++            if (use_p104_wide) {
++                launch_moe(std::false_type{}, std::true_type{});
++            } else {
++                launch_moe(std::false_type{}, std::false_type{});
++            }
++        }
+     } else {
+-        ggml_cuda_kernel_launch(mul_mat_vec_q_moe<type, rows_per_block, false>, launch_params,
+-            vx, vy, ids, fusion, dst, ncols_x, nchannels_y, nrows_x,
+-            stride_row_x, stride_col_y, stride_col_dst,
+-            stride_channel_x, stride_channel_y, stride_channel_dst,
+-            ncols_dst, ids_stride);
++        if (has_fusion) {
++            launch_moe(std::true_type{}, std::false_type{});
++        } else {
++            launch_moe(std::false_type{}, std::false_type{});
++        }
+     }
+ }
+ 
+@@ -2057,7 +2107,7 @@ static void mul_mat_vec_q_switch_ncols_dst(
+             vx, vy, ids, fusion, dst, ncols_x, nchannels_y_fd, nrows_x,
+             stride_row_x, stride_col_y, stride_col_dst,
+             stride_channel_x, stride_channel_y, stride_channel_dst,
+-            ncols_dst, ids_stride, warp_size, nchannels_dst, stream);
++            ncols_dst, ids_stride, warp_size, nchannels_dst, table_id, stream);
+         return;
+     }
+ 

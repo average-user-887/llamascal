@@ -1,5 +1,6 @@
 6a40eb0e9abbe3c2839f8ce6ded3e7d60d5aa3e7b0b909e2e5217b095851dc6a  ./README.md
 21bd241fdca85d0390a0dc75c789b2d6710604f2ef78547b9c782650cc0f92c3  ./docs/CARDS-SUMMARY.md
+af15a091c0253e302e218dde11cd4935049cd2132efe8db0b4ef5b7ea19b9e0f  ./docs/DAY-RESULTS-20261127.md
 9662af5388be8611f0877e4a8c86156966179ab4610c184cd47422ea33ee4f61  ./docs/FINAL-REPORT-v15b-20261126.md
 7ff7ced52c1275b772c3c72ed9995fb35e0681591c2b7db14b1fd910f4ed20e6  ./docs/FINAL-REPORT.md
 01e253103631ae4b9cccba71d899a6e419217e1b7f6031f5cfc594ba5cf04bf0  ./docs/HANDOFF-LLAMASCAL-ORCHESTRATOR.md
@@ -81,6 +82,8 @@ c131c85167e2e6603f8a924481d9f33b8647850b133af07dee5f36a60b03d89e  ./patches/v14-
 7181dbaac43a112ef0fd571b1a3836ff0f91f8d0e8ec9b62c35de277c8f8729f  ./patches/v15b-from-v14.patch
 e9828780580a44936bf26d74254485dbd20f657a636ea792ee4e24b5c7c3f7be  ./patches/v16-from-v15b.patch
 10601f13bdb257ae7510c0358272bc1a0bc69048c991242d673b1074984b5fbc  ./patches/v16-p104-bundle.patch
+d982bb31fc9006c6e7cd477600c8e292cf4f3ba64a9418f09dc4802041e08f5b  ./patches/v17-from-v16.patch
+42ab5f1d77963b334919d9068a0c64481050b9a891576cd68d65c23a295ca9cc  ./patches/v17-p104-bundle.patch
 cc42689735a0f55ed8425c99dc8a5a711da88e832d987ed1fc48ee00d82f8035  ./receipts/hashes/v11-HASHES.txt
 1888ea8757e82f63ad02e2bf65d1ce8dd900d676f3b480751c9cfa9baba83066  ./receipts/hashes/v13-HASHES.txt
 0bf96fd6461fdd5476357f60c358ce314c6b5b47039ac791b13b614863d66146  ./receipts/hashes/v14-HASHES.txt
@@ -3054,6 +3057,12 @@ e8fc4461ba78b50d6e87200ad8cd4c0c2f459e47cf3095b63addce3997c63547  ./receipts/v16
 051816efdedde9e9c86d6dd45133df1eaaa4944eef29741184ce3b4e058cf4ae  ./receipts/v16/phase4-abba-summary.json
 f1cc3fd3ba4e154336cf1807aeae5896392f97bb87708edc7760956c260cb113  ./receipts/v16/s0-v15b-summary.json
 247a6a1d157eda8a5fc087f6833e27902d8f577476b967426cf27b969ae98a82  ./receipts/v16/s0-v16-summary.json
+87957df9ff44ff7e6a22df15c925c5659f3cfc11ef3f628f17d9190cf5370a08  ./receipts/v17/HASHES-v17.txt
+53cbdb4ae891071c01a311207e18a59d5209e4c46125cca55a77adf0c7b9d69f  ./receipts/v17/f60e8ba-20261127.json
+8d2d62e81cc3f185edb9ade9bd34e1fcc1fb27e0c3f3fa155c61102b53caa9da  ./receipts/v17/v17p2-abba-summary.json
+442d9ab77815d9f39910d942dcf276f80b796b22b859b838abd099d58d21c3f7  ./receipts/v17/v17p2-s0-v16-summary.json
+134142247c5decd1a7ad79b78b21eaf8bcee4bf5c80c6a77464734fcef82e1c1  ./receipts/v17/v17p2-s0-v17-summary.json
+0a397df8d882f58b0e57690ddd46485dc7c5d30974ee88ec7ab887e113f8ec17  ./receipts/v17/v17p3-gates-summary.json
 f7353162dab01d7e3d3a8d003c1925aa034482ba1fdba85f2fe85cdc6cf93e92  ./scripts/bench.py
 d7961809467c4fd22fe7e964fca2ea26d8ccaef274613c5d44ed7130fc961285  ./scripts/container/CHANGES.md
 0efbcbe3831f0ea7375df26be2b4f3591dfa1c0dfa3e953a22d96f5c64e9491e  ./scripts/container/Dockerfile
