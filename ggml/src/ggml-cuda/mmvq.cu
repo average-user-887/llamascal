@@ -1127,14 +1127,85 @@ static __device__ __forceinline__ void p104_mmvq_kloop_q4_col(
     }
 }
 
-// p104 v15: single-column hoisted-y + magic-float k-loop for Q4_K/Q5_K on Pascal (ncols_dst == 1, no fusion).
-// Loads q8_1 u[2][8] once via int4 __ldg, computes exact sumi_m once across rows_per_cuda_block, and uses magic-float.
-template <ggml_type type, int rows_per_cuda_block>
+// p104 v17: per-row Q4_K/Q5_K dot product with hoisted q8_1 u[2][QI8_1] and magic-float scale decoding.
+template <ggml_type type>
+static __device__ __forceinline__ float p104_mmvq_q45_n1_row(
+        const void * __restrict__ vx, const int row_kbx, const int j_sub,
+        const int (&u)[2][QI8_1], const float (&d8)[2], const float (&fsum_m)[2]) {
+    int v[8];
+    int vh[8];
+    const uint16_t * scales;
+    float2 dmf;
+    if constexpr (type == GGML_TYPE_Q4_K) {
+        const block_q4_K * bq = (const block_q4_K *) vx + row_kbx;
+        const int4 * q4 = (const int4 *) (bq->qs + 32 * j_sub);
+        const int4 v0 = __ldg(q4 + 0);
+        const int4 v1 = __ldg(q4 + 1);
+        v[0] = v0.x; v[1] = v0.y; v[2] = v0.z; v[3] = v0.w;
+        v[4] = v1.x; v[5] = v1.y; v[6] = v1.z; v[7] = v1.w;
+        scales = (const uint16_t *) bq->scales;
+        dmf = __half22float2(__ldg(&bq->dm));
+    } else {
+        const block_q5_K * bq = (const block_q5_K *) vx + row_kbx;
+        const int4 * q5 = (const int4 *) (bq->qs + 32 * j_sub);
+        const int4 * qh = (const int4 *) bq->qh;
+        const int4 v0 = __ldg(q5 + 0);
+        const int4 v1 = __ldg(q5 + 1);
+        const int4 h0 = __ldg(qh + 0);
+        const int4 h1 = __ldg(qh + 1);
+        v[0] = v0.x; v[1] = v0.y; v[2] = v0.z; v[3] = v0.w;
+        v[4] = v1.x; v[5] = v1.y; v[6] = v1.z; v[7] = v1.w;
+        vh[0] = h0.x >> (2 * j_sub); vh[1] = h0.y >> (2 * j_sub);
+        vh[2] = h0.z >> (2 * j_sub); vh[3] = h0.w >> (2 * j_sub);
+        vh[4] = h1.x >> (2 * j_sub); vh[5] = h1.y >> (2 * j_sub);
+        vh[6] = h1.z >> (2 * j_sub); vh[7] = h1.w >> (2 * j_sub);
+        scales = (const uint16_t *) bq->scales;
+        dmf = __half22float2(__ldg(&bq->dm));
+    }
+    const int jm = j_sub & 1;
+    const uint32_t s0 = __ldg(scales + jm + 0);
+    const uint32_t s2 = __ldg(scales + jm + 2);
+    const uint32_t s4 = __ldg(scales + jm + 4);
+    const uint32_t hi = (uint32_t) -(int32_t) (j_sub >= 2);
+    const uint32_t a0 = ((s0 & 0x3f3f) & ~hi) | ((((s4 >> 0) & 0x0f0f) | ((s0 & 0xc0c0) >> 2)) & hi);
+    const uint32_t a1 = ((s2 & 0x3f3f) & ~hi) | ((((s4 >> 4) & 0x0f0f) | ((s2 & 0xc0c0) >> 2)) & hi);
+    const float wd[2] = {
+        dmf.x * (__int_as_float(P104_MMVQ_MAGIC_I | (a0 & 0xff)) - P104_MMVQ_MAGIC_F),
+        dmf.x * (__int_as_float(P104_MMVQ_MAGIC_I | ((a0 >> 8) & 0xff)) - P104_MMVQ_MAGIC_F)
+    };
+    const float wm[2] = {
+        dmf.y * (__int_as_float(P104_MMVQ_MAGIC_I | (a1 & 0xff)) - P104_MMVQ_MAGIC_F),
+        dmf.y * (__int_as_float(P104_MMVQ_MAGIC_I | ((a1 >> 8) & 0xff)) - P104_MMVQ_MAGIC_F)
+    };
+
+    float row_sum = 0.0f;
+#pragma unroll
+    for (int i_sub = 0; i_sub < 2; ++i_sub) {
+        int sumi_d = P104_MMVQ_MAGIC_I;
+#pragma unroll
+        for (int l = 0; l < QI8_1; ++l) {
+            int vl = (v[l] >> (4 * i_sub)) & 0x0F0F0F0F;
+            if constexpr (type == GGML_TYPE_Q5_K) {
+                vl |= (vh[l] << (4 - i_sub)) & 0x10101010;
+            }
+            sumi_d = ggml_cuda_dp4a(vl, u[i_sub][l], sumi_d);
+        }
+        const float fd = __int_as_float(sumi_d) - P104_MMVQ_MAGIC_F;
+        row_sum = fmaf(fd, wd[i_sub] * d8[i_sub], row_sum);
+        row_sum = fmaf(-wm[i_sub], fsum_m[i_sub], row_sum);
+    }
+    return row_sum;
+}
+
+// p104 v15/v17: single-column hoisted-y + magic-float k-loop for Q4_K/Q5_K on Pascal (ncols_dst == 1, optional gate fusion).
+// Loads q8_1 u[2][8] once via int4 __ldg, computes exact sumi_m once across rows_per_cuda_block (and gate weights), and uses magic-float.
+template <ggml_type type, int rows_per_cuda_block, bool has_fusion>
 static __device__ __forceinline__ void p104_mmvq_kloop_q45_n1(
-        const void * __restrict__ vx, const block_q8_1 * __restrict__ y,
+        const void * __restrict__ vx, const void * __restrict__ vgate, const bool use_gate,
+        const block_q8_1 * __restrict__ y,
         const int tid, const int blocks_per_row_x, const int blocks_per_iter,
         const int kbx_offset, const int stride_row_x,
-        float (&tmp)[1][rows_per_cuda_block]) {
+        float (&tmp)[1][rows_per_cuda_block], float (&tmp_gate)[1][rows_per_cuda_block]) {
     constexpr int qk = ggml_cuda_type_traits<type>::qk;
     constexpr int qi = ggml_cuda_type_traits<type>::qi;
     constexpr int vdr = 8;
@@ -1166,69 +1237,12 @@ static __device__ __forceinline__ void p104_mmvq_kloop_q45_n1(
 #pragma unroll
         for (int r = 0; r < rows_per_cuda_block; ++r) {
             const int row_kbx = kbx_offset + r * stride_row_x + kbx;
-            int v[8];
-            int vh[8];
-            const uint16_t * scales;
-            float2 dmf;
-            if constexpr (type == GGML_TYPE_Q4_K) {
-                const block_q4_K * bq = (const block_q4_K *) vx + row_kbx;
-                const int4 * q4 = (const int4 *) (bq->qs + 32 * j_sub);
-                const int4 v0 = __ldg(q4 + 0);
-                const int4 v1 = __ldg(q4 + 1);
-                v[0] = v0.x; v[1] = v0.y; v[2] = v0.z; v[3] = v0.w;
-                v[4] = v1.x; v[5] = v1.y; v[6] = v1.z; v[7] = v1.w;
-                scales = (const uint16_t *) bq->scales;
-                dmf = __half22float2(__ldg(&bq->dm));
-            } else {
-                const block_q5_K * bq = (const block_q5_K *) vx + row_kbx;
-                const int4 * q5 = (const int4 *) (bq->qs + 32 * j_sub);
-                const int4 * qh = (const int4 *) bq->qh;
-                const int4 v0 = __ldg(q5 + 0);
-                const int4 v1 = __ldg(q5 + 1);
-                const int4 h0 = __ldg(qh + 0);
-                const int4 h1 = __ldg(qh + 1);
-                v[0] = v0.x; v[1] = v0.y; v[2] = v0.z; v[3] = v0.w;
-                v[4] = v1.x; v[5] = v1.y; v[6] = v1.z; v[7] = v1.w;
-                vh[0] = h0.x >> (2 * j_sub); vh[1] = h0.y >> (2 * j_sub);
-                vh[2] = h0.z >> (2 * j_sub); vh[3] = h0.w >> (2 * j_sub);
-                vh[4] = h1.x >> (2 * j_sub); vh[5] = h1.y >> (2 * j_sub);
-                vh[6] = h1.z >> (2 * j_sub); vh[7] = h1.w >> (2 * j_sub);
-                scales = (const uint16_t *) bq->scales;
-                dmf = __half22float2(__ldg(&bq->dm));
-            }
-            const int jm = j_sub & 1;
-            const uint32_t s0 = __ldg(scales + jm + 0);
-            const uint32_t s2 = __ldg(scales + jm + 2);
-            const uint32_t s4 = __ldg(scales + jm + 4);
-            const uint32_t hi = (uint32_t) -(int32_t) (j_sub >= 2);
-            const uint32_t a0 = ((s0 & 0x3f3f) & ~hi) | ((((s4 >> 0) & 0x0f0f) | ((s0 & 0xc0c0) >> 2)) & hi);
-            const uint32_t a1 = ((s2 & 0x3f3f) & ~hi) | ((((s4 >> 4) & 0x0f0f) | ((s2 & 0xc0c0) >> 2)) & hi);
-            const float wd[2] = {
-                dmf.x * (__int_as_float(P104_MMVQ_MAGIC_I | (a0 & 0xff)) - P104_MMVQ_MAGIC_F),
-                dmf.x * (__int_as_float(P104_MMVQ_MAGIC_I | ((a0 >> 8) & 0xff)) - P104_MMVQ_MAGIC_F)
-            };
-            const float wm[2] = {
-                dmf.y * (__int_as_float(P104_MMVQ_MAGIC_I | (a1 & 0xff)) - P104_MMVQ_MAGIC_F),
-                dmf.y * (__int_as_float(P104_MMVQ_MAGIC_I | ((a1 >> 8) & 0xff)) - P104_MMVQ_MAGIC_F)
-            };
-
-            float row_sum = 0.0f;
-#pragma unroll
-            for (int i_sub = 0; i_sub < 2; ++i_sub) {
-                int sumi_d = P104_MMVQ_MAGIC_I;
-#pragma unroll
-                for (int l = 0; l < QI8_1; ++l) {
-                    int vl = (v[l] >> (4 * i_sub)) & 0x0F0F0F0F;
-                    if constexpr (type == GGML_TYPE_Q5_K) {
-                        vl |= (vh[l] << (4 - i_sub)) & 0x10101010;
-                    }
-                    sumi_d = ggml_cuda_dp4a(vl, u[i_sub][l], sumi_d);
+            tmp[0][r] += p104_mmvq_q45_n1_row<type>(vx, row_kbx, j_sub, u, d8, fsum_m);
+            if constexpr (has_fusion) {
+                if (use_gate) {
+                    tmp_gate[0][r] += p104_mmvq_q45_n1_row<type>(vgate, row_kbx, j_sub, u, d8, fsum_m);
                 }
-                const float fd = __int_as_float(sumi_d) - P104_MMVQ_MAGIC_F;
-                row_sum = fmaf(fd, wd[i_sub] * d8[i_sub], row_sum);
-                row_sum = fmaf(-wm[i_sub], fsum_m[i_sub], row_sum);
             }
-            tmp[0][r] += row_sum;
         }
     }
 }
@@ -1550,10 +1564,10 @@ static __global__ void mul_mat_vec_q(
     const block_q8_1 * y = ((const block_q8_1 *) vy) + sample_y*stride_sample_y + channel_y*stride_channel_y;
     const int kbx_offset = sample_x*stride_sample_x + channel_x*stride_channel_x + row0*stride_row_x;
 
-    if constexpr (table_id == MMVQ_PARAMETERS_PASCAL && !has_fusion && !small_k && ncols_dst == 1 &&
-                  ((type == GGML_TYPE_Q4_K && !has_ids) || type == GGML_TYPE_Q5_K)) {
-        p104_mmvq_kloop_q45_n1<type, rows_per_cuda_block>(
-            vx, y, tid, blocks_per_row_x, blocks_per_iter, kbx_offset, stride_row_x, tmp);
+    if constexpr (table_id == MMVQ_PARAMETERS_PASCAL && !small_k && ncols_dst == 1 &&
+                  ((type == GGML_TYPE_Q4_K && (!has_ids || has_fusion)) || type == GGML_TYPE_Q5_K)) {
+        p104_mmvq_kloop_q45_n1<type, rows_per_cuda_block, has_fusion>(
+            vx, vgate, use_gate, y, tid, blocks_per_row_x, blocks_per_iter, kbx_offset, stride_row_x, tmp, tmp_gate);
     } else if constexpr (table_id == MMVQ_PARAMETERS_PASCAL && !has_fusion && !small_k && type == GGML_TYPE_Q4_K && ncols_dst == 3) {
         p104_mmvq_kloop_q4_col<ncols_dst, rows_per_cuda_block>(
             vx, y, tid, blocks_per_row_x, blocks_per_iter, kbx_offset, stride_row_x, stride_col_y, tmp);
