@@ -893,6 +893,9 @@ bool ggml_cuda_should_use_mmvf(const ggml_tensor * src0, int cc, int warp_size, 
                 if (cc >= GGML_CUDA_CC_TURING) {
                     return ne11 <= 4;
                 }
+                if (src0_ne[1] <= 128) {
+                    return ne11 <= (src0_ne[0] <= 1024 ? MMVF_MAX_BATCH_SIZE : 4);
+                }
                 return ne11 <= 3;
             } else if (GGML_CUDA_CC_IS_AMD(cc)) {
                 if (fp32_mma_hardware_available(cc)) {
