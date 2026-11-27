@@ -1716,7 +1716,7 @@ static __global__ void mul_mat_vec_q(
 // Grid: (ceil(nrows_x / c_rows_per_block), nchannels_dst)
 // Block: (warp_size, ncols_dst) - each warp handles one token independently.
 // No shared memory reduction needed since each warp works alone.
-template <ggml_type type, int c_rows_per_block, bool has_fusion = false>
+template <ggml_type type, int c_rows_per_block, bool has_fusion = false, bool p104_wide = false>
 __launch_bounds__(get_mmvq_mmid_max_batch_for_device<type>()*ggml_cuda_get_physical_warp_size(), 1)
 static __global__ void mul_mat_vec_q_moe(
         const void * vx_ptr, const void * vy_ptr, const int32_t * ids_ptr, const ggml_cuda_mm_fusion_args_device fusion,
@@ -1732,10 +1732,17 @@ static __global__ void mul_mat_vec_q_moe(
 
     constexpr int qk  = ggml_cuda_type_traits<type>::qk;
     constexpr int qi  = ggml_cuda_type_traits<type>::qi;
-    constexpr int vdr = get_vdr_mmvq(type);
+    constexpr bool use_p104_wide = p104_wide && mmvq_pascal_tuned(type);
+    constexpr int vdr = use_p104_wide
+        ? (type == GGML_TYPE_Q6_K ? P104_Q6_VDR : 8)
+        : get_vdr_mmvq(type);
     constexpr int warp_size = ggml_cuda_get_physical_warp_size();
 
-    constexpr vec_dot_q_cuda_t vec_dot_q_cuda = get_vec_dot_q_cuda(type);
+    constexpr vec_dot_q_cuda_t vec_dot_q_cuda = use_p104_wide
+        ? (type == GGML_TYPE_Q4_K ? vec_dot_q4_K_q8_1_wide<true>
+         : type == GGML_TYPE_Q5_K ? vec_dot_q5_K_q8_1_wide<true>
+         : vec_dot_q6_K_q8_1_v<P104_Q6_VDR, false>)
+        : get_vec_dot_q_cuda(type);
 
     const bool shared_expert = has_fusion && fusion.shared_up && blockIdx.y == gridDim.y - 1;
     if (shared_expert) {
@@ -1930,7 +1937,7 @@ static void mul_mat_vec_q_moe_launch(
         const uint32_t stride_row_x, const uint32_t stride_col_y, const uint32_t stride_col_dst,
         const uint32_t stride_channel_x, const uint32_t stride_channel_y, const uint32_t stride_channel_dst,
         const uint32_t ncols_dst, const uint32_t ids_stride,
-        const int warp_size, const int nchannels_dst, cudaStream_t stream) {
+        const int warp_size, const int nchannels_dst, const mmvq_parameter_table_id table_id, cudaStream_t stream) {
 
     constexpr int rows_per_block = 2; // 2 gives best perf based on tuning
     const int64_t nblocks_rows = (nrows_x + rows_per_block - 1) / rows_per_block;
@@ -1940,19 +1947,38 @@ static void mul_mat_vec_q_moe_launch(
 
     const bool has_fusion = fusion.gate != nullptr || fusion.x_bias != nullptr || fusion.gate_bias != nullptr ||
                             fusion.x_scale != nullptr || fusion.gate_scale != nullptr;
+    const bool aligned16 = ((((uintptr_t) vx | (uintptr_t) fusion.gate | (uintptr_t) fusion.shared_up | (uintptr_t) fusion.shared_gate) & 15) == 0);
+    const bool use_p104_wide = (table_id == MMVQ_PARAMETERS_PASCAL) && (
+        (mmvq_pascal_wide(type) && ncols_x >= 2048 && aligned16) ||
+        (type == GGML_TYPE_Q6_K && ncols_x >= 512));
 
-    if (has_fusion) {
-        ggml_cuda_kernel_launch(mul_mat_vec_q_moe<type, rows_per_block, true>, launch_params,
+    auto launch_moe = [&](auto c_fusion, auto c_wide) {
+        ggml_cuda_kernel_launch(mul_mat_vec_q_moe<type, rows_per_block, c_fusion(), c_wide()>, launch_params,
             vx, vy, ids, fusion, dst, ncols_x, nchannels_y, nrows_x,
             stride_row_x, stride_col_y, stride_col_dst,
             stride_channel_x, stride_channel_y, stride_channel_dst,
             ncols_dst, ids_stride);
+    };
+    if constexpr (mmvq_pascal_tuned(type)) {
+        if (has_fusion) {
+            if (use_p104_wide) {
+                launch_moe(std::true_type{}, std::true_type{});
+            } else {
+                launch_moe(std::true_type{}, std::false_type{});
+            }
+        } else {
+            if (use_p104_wide) {
+                launch_moe(std::false_type{}, std::true_type{});
+            } else {
+                launch_moe(std::false_type{}, std::false_type{});
+            }
+        }
     } else {
-        ggml_cuda_kernel_launch(mul_mat_vec_q_moe<type, rows_per_block, false>, launch_params,
-            vx, vy, ids, fusion, dst, ncols_x, nchannels_y, nrows_x,
-            stride_row_x, stride_col_y, stride_col_dst,
-            stride_channel_x, stride_channel_y, stride_channel_dst,
-            ncols_dst, ids_stride);
+        if (has_fusion) {
+            launch_moe(std::true_type{}, std::false_type{});
+        } else {
+            launch_moe(std::false_type{}, std::false_type{});
+        }
     }
 }
 
@@ -2071,7 +2097,7 @@ static void mul_mat_vec_q_switch_ncols_dst(
             vx, vy, ids, fusion, dst, ncols_x, nchannels_y_fd, nrows_x,
             stride_row_x, stride_col_y, stride_col_dst,
             stride_channel_x, stride_channel_y, stride_channel_dst,
-            ncols_dst, ids_stride, warp_size, nchannels_dst, stream);
+            ncols_dst, ids_stride, warp_size, nchannels_dst, table_id, stream);
         return;
     }
 
