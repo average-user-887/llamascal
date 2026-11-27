@@ -7,6 +7,7 @@
 72cd53dcd66757ec8db7b016957b7f21a1c48d5d62564e1b9bf5528c2267be47  ./docs/LLAMASCAL_ORCHESTRATOR.md
 a259936dc6d6b0c8e766b2f46d4448b73d1977fa568f583827243694d577538d  ./docs/LOCAL_MANIFEST.json
 0fe763387fb880b199eec53bab64ca999a7e72aaf201b071b6ded3d171d60128  ./docs/NEXT_EXPERIMENTS.md
+a4e1a639ef148cca536bf7e878d2a161823512649eea6697a2187455dcc91aeb  ./docs/NIGHT-RESULTS-20261127.md
 f6cd792fb21fe336de88d62adad32474354a35a790144732a3c299c85e9da884  ./docs/PASCAL_MODELS.json
 f69bd4f83414567774a83b44afc66f721ce16a5e0835b5079b237a334dce6e6b  ./docs/PLACEMENT-ANALYSIS.md
 5483cf55c7861ceeb10b1b64c6e3dca951976719941ad6bf6010b110239ef7b7  ./docs/REVIEW-K1.md
@@ -78,6 +79,8 @@ a8a8948eebf1b100e50a1ad22b5a79789e3125a838c18f1645fe368d6a02ef46  ./patches/llam
 ddcbf29dc433f5a7fdfda164cc69b62f1b92543bd03866c446214a9b8bcba5dd  ./patches/v14-from-v13.patch
 c131c85167e2e6603f8a924481d9f33b8647850b133af07dee5f36a60b03d89e  ./patches/v14-p104-bundle.patch
 7181dbaac43a112ef0fd571b1a3836ff0f91f8d0e8ec9b62c35de277c8f8729f  ./patches/v15b-from-v14.patch
+e9828780580a44936bf26d74254485dbd20f657a636ea792ee4e24b5c7c3f7be  ./patches/v16-from-v15b.patch
+10601f13bdb257ae7510c0358272bc1a0bc69048c991242d673b1074984b5fbc  ./patches/v16-p104-bundle.patch
 cc42689735a0f55ed8425c99dc8a5a711da88e832d987ed1fc48ee00d82f8035  ./receipts/hashes/v11-HASHES.txt
 1888ea8757e82f63ad02e2bf65d1ce8dd900d676f3b480751c9cfa9baba83066  ./receipts/hashes/v13-HASHES.txt
 0bf96fd6461fdd5476357f60c358ce314c6b5b47039ac791b13b614863d66146  ./receipts/hashes/v14-HASHES.txt
@@ -2834,7 +2837,6 @@ ec9fc8a1a994b902152dfa7c85ae9c8b89419c13d011bbba84f60e4060c8acad  ./receipts/run
 86bdc2e3cdf653d1da6e7d7b0756c81300ab65a15a48588396ebdbd3be005932  ./receipts/runs/v15-p2000-q8b-B2.meta.json
 cadc50f17fb0a8984d7d140352597634ead9c412fca94e2264260a09ddba203e  ./receipts/runs/v15-p2000-q8b-B2.out
 c865b0bd74e4783ac90b639cdd764175ca2c1461637a62f9f805f40a8739ac91  ./receipts/runs/v15-p2000-q8b-B2.trace.csv
-04cbb8b728369c3cdd0396803393372d6b90da04e32829cff07432b4a8fd704f  ./receipts/runs/v15-p2000.summary.log
 98996eb0fbcb65667416364b2415eebdc09b66ac67cacf8961036237e504b09d  ./receipts/runs/v15-p620-fa-A1.meta.json
 7513408695f188f8690aebc020174a976c58d0741c67803bc22a681c97befedc  ./receipts/runs/v15-p620-fa-A1.out
 1886e5d4cf52aaf7455699bce08ff1de9baab51e24be5689ee44bb69c451e89a  ./receipts/runs/v15-p620-fa-A1.trace.csv
@@ -2871,7 +2873,6 @@ fad3a54edab4a48d5515c765e1847b8ab1003cec7d6f1a69fbfacf4000c0230f  ./receipts/run
 39cba20b4e1f2e7e72e3bd77309d41c27004d19b4b2a226fef20c5f3a883cc66  ./receipts/runs/v15-p620-mmid-B2.meta.json
 c19d7ecb6ca557bc9e996a00548ce5c52af85683e8af763e8746bb13c03b8965  ./receipts/runs/v15-p620-mmid-B2.out
 658396f1abeb3c142899de29994ae3f38203cc42ee9894516bbb0da51d31ca07  ./receipts/runs/v15-p620-mmid-B2.trace.csv
-9859fb0be8496faf2ef9746111add5baa1c23f4a3590ce2e58ea1b5c5d086fcf  ./receipts/runs/v15-p620.summary.log
 461da6551767529f8ba5312eaebc9db84bda95fab44852bec9d962df99059d34  ./receipts/runs/v15b-3arm-P104-q35-S1.meta.json
 f467f7266e2be7af14a8187d560cc9c0c999df3ee9a15a8741a8a2a50ac72628  ./receipts/runs/v15b-3arm-P104-q35-S1.out
 c554a7b769b3fcb5cef4e9271340c5096a66bfc1d816cb991766c0e7b02f6791  ./receipts/runs/v15b-3arm-P104-q35-S1.trace.csv
@@ -3049,6 +3050,10 @@ f6cda114f5bd4f8a7ccc8b4ee594af637b09a7fe91383971c1e8743460d8a572  ./receipts/run
 3c4ad2027a2cda5e4c83b0b50829970e2f63bc385bc0ee47a8c53f6d6ffe908c  ./receipts/runs/v15b-p620-test.meta.json
 28b6b84761ca2d972c1b91c890fb630c18d0b01eca6741b068e5779e3a43bb5b  ./receipts/runs/v15b-p620-test.out
 340eddddb6f403222f5c42e307a845cc8cbc7256a2b4eb9c13d2784e5e5fb6d5  ./receipts/runs/v15b-p620-test.trace.csv
+e8fc4461ba78b50d6e87200ad8cd4c0c2f459e47cf3095b63addce3997c63547  ./receipts/v16/HASHES-v16.txt
+051816efdedde9e9c86d6dd45133df1eaaa4944eef29741184ce3b4e058cf4ae  ./receipts/v16/phase4-abba-summary.json
+f1cc3fd3ba4e154336cf1807aeae5896392f97bb87708edc7760956c260cb113  ./receipts/v16/s0-v15b-summary.json
+247a6a1d157eda8a5fc087f6833e27902d8f577476b967426cf27b969ae98a82  ./receipts/v16/s0-v16-summary.json
 f7353162dab01d7e3d3a8d003c1925aa034482ba1fdba85f2fe85cdc6cf93e92  ./scripts/bench.py
 d7961809467c4fd22fe7e964fca2ea26d8ccaef274613c5d44ed7130fc961285  ./scripts/container/CHANGES.md
 0efbcbe3831f0ea7375df26be2b4f3591dfa1c0dfa3e953a22d96f5c64e9491e  ./scripts/container/Dockerfile
