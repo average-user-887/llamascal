@@ -770,17 +770,17 @@ static constexpr __device__ int get_mmvq_mmid_max_batch_for_device() {
 
 // The wide vec_dot is used for up to P104_WIDE_MAX_NCOLS columns; with 4..8 columns it was slower than vdr 2.
 static constexpr __host__ __device__ int get_vdr_mmvq_tbl(ggml_type type, mmvq_parameter_table_id table_id, int ncols_dst, bool small_k = false) {
-    if (small_k) {
+    if (small_k && !(table_id == MMVQ_PARAMETERS_PASCAL && ncols_dst == 1 && mmvq_pascal_tuned(type))) {
         return get_vdr_mmvq(type);
     }
     if (table_id == MMVQ_PARAMETERS_PASCAL && ncols_dst <= 3 && type == GGML_TYPE_Q6_K) {
-        return ncols_dst == 1 ? P104_Q6_VDR : P104_Q6_VDR_N23;
+        return (ncols_dst == 1 || small_k) ? P104_Q6_VDR : P104_Q6_VDR_N23;
     }
     return table_id == MMVQ_PARAMETERS_PASCAL && ncols_dst <= P104_WIDE_MAX_NCOLS && mmvq_pascal_wide(type) ? 8 : get_vdr_mmvq(type);
 }
 
 static constexpr __device__ vec_dot_q_cuda_t get_vec_dot_q_cuda_tbl(ggml_type type, mmvq_parameter_table_id table_id, int ncols_dst, bool small_k = false) {
-    if (small_k) {
+    if (small_k && !(table_id == MMVQ_PARAMETERS_PASCAL && ncols_dst == 1 && mmvq_pascal_tuned(type))) {
         return get_vec_dot_q_cuda(type);
     }
     if (table_id == MMVQ_PARAMETERS_PASCAL && ncols_dst <= P104_WIDE_MAX_NCOLS) {
@@ -949,7 +949,10 @@ static constexpr __host__ __device__ int calc_nwarps(ggml_type type, int ncols_d
         return calc_nwarps(type, ncols_dst, MMVQ_PARAMETERS_GENERIC);
     }
     if (table_id == MMVQ_PARAMETERS_PASCAL) {
-        if (ncols_dst == 1 && !small_k && mmvq_pascal_tuned(type)) {
+        if (ncols_dst == 1 && mmvq_pascal_tuned(type)) {
+            if (small_k) {
+                return 1;
+            }
             return type == GGML_TYPE_Q6_K ? P104_NW_Q6 : P104_NW;
         }
         if (ncols_dst >= 2 && ncols_dst <= 3 && mmvq_pascal_tuned(type)) {
@@ -978,7 +981,10 @@ static constexpr __host__ __device__ bool mmvq_two_rows_ncols1(ggml_type type) {
 }
 
 static constexpr __host__ __device__ int calc_rows_per_block(ggml_type type, int ncols_dst, int table_id, bool small_k = false, int nwarps = 1) {
-    if (table_id == MMVQ_PARAMETERS_PASCAL && ncols_dst == 1 && !small_k && mmvq_pascal_tuned(type)) {
+    if (table_id == MMVQ_PARAMETERS_PASCAL && ncols_dst == 1 && mmvq_pascal_tuned(type)) {
+        if (small_k) {
+            return 4;
+        }
         return type == GGML_TYPE_Q6_K ? P104_RPB_Q6 : P104_RPB;
     }
     if (table_id == MMVQ_PARAMETERS_PASCAL && ncols_dst >= 2 && ncols_dst <= 3 && mmvq_pascal_tuned(type)) {
@@ -1127,14 +1133,85 @@ static __device__ __forceinline__ void p104_mmvq_kloop_q4_col(
     }
 }
 
-// p104 v15: single-column hoisted-y + magic-float k-loop for Q4_K/Q5_K on Pascal (ncols_dst == 1, no fusion).
-// Loads q8_1 u[2][8] once via int4 __ldg, computes exact sumi_m once across rows_per_cuda_block, and uses magic-float.
-template <ggml_type type, int rows_per_cuda_block>
+// p104 v17: per-row Q4_K/Q5_K dot product with hoisted q8_1 u[2][QI8_1] and magic-float scale decoding.
+template <ggml_type type>
+static __device__ __forceinline__ float p104_mmvq_q45_n1_row(
+        const void * __restrict__ vx, const int row_kbx, const int j_sub,
+        const int (&u)[2][QI8_1], const float (&d8)[2], const float (&fsum_m)[2]) {
+    int v[8];
+    int vh[8];
+    const uint16_t * scales;
+    float2 dmf;
+    if constexpr (type == GGML_TYPE_Q4_K) {
+        const block_q4_K * bq = (const block_q4_K *) vx + row_kbx;
+        const int4 * q4 = (const int4 *) (bq->qs + 32 * j_sub);
+        const int4 v0 = __ldg(q4 + 0);
+        const int4 v1 = __ldg(q4 + 1);
+        v[0] = v0.x; v[1] = v0.y; v[2] = v0.z; v[3] = v0.w;
+        v[4] = v1.x; v[5] = v1.y; v[6] = v1.z; v[7] = v1.w;
+        scales = (const uint16_t *) bq->scales;
+        dmf = __half22float2(__ldg(&bq->dm));
+    } else {
+        const block_q5_K * bq = (const block_q5_K *) vx + row_kbx;
+        const int4 * q5 = (const int4 *) (bq->qs + 32 * j_sub);
+        const int4 * qh = (const int4 *) bq->qh;
+        const int4 v0 = __ldg(q5 + 0);
+        const int4 v1 = __ldg(q5 + 1);
+        const int4 h0 = __ldg(qh + 0);
+        const int4 h1 = __ldg(qh + 1);
+        v[0] = v0.x; v[1] = v0.y; v[2] = v0.z; v[3] = v0.w;
+        v[4] = v1.x; v[5] = v1.y; v[6] = v1.z; v[7] = v1.w;
+        vh[0] = h0.x >> (2 * j_sub); vh[1] = h0.y >> (2 * j_sub);
+        vh[2] = h0.z >> (2 * j_sub); vh[3] = h0.w >> (2 * j_sub);
+        vh[4] = h1.x >> (2 * j_sub); vh[5] = h1.y >> (2 * j_sub);
+        vh[6] = h1.z >> (2 * j_sub); vh[7] = h1.w >> (2 * j_sub);
+        scales = (const uint16_t *) bq->scales;
+        dmf = __half22float2(__ldg(&bq->dm));
+    }
+    const int jm = j_sub & 1;
+    const uint32_t s0 = __ldg(scales + jm + 0);
+    const uint32_t s2 = __ldg(scales + jm + 2);
+    const uint32_t s4 = __ldg(scales + jm + 4);
+    const uint32_t hi = (uint32_t) -(int32_t) (j_sub >= 2);
+    const uint32_t a0 = ((s0 & 0x3f3f) & ~hi) | ((((s4 >> 0) & 0x0f0f) | ((s0 & 0xc0c0) >> 2)) & hi);
+    const uint32_t a1 = ((s2 & 0x3f3f) & ~hi) | ((((s4 >> 4) & 0x0f0f) | ((s2 & 0xc0c0) >> 2)) & hi);
+    const float wd[2] = {
+        dmf.x * (__int_as_float(P104_MMVQ_MAGIC_I | (a0 & 0xff)) - P104_MMVQ_MAGIC_F),
+        dmf.x * (__int_as_float(P104_MMVQ_MAGIC_I | ((a0 >> 8) & 0xff)) - P104_MMVQ_MAGIC_F)
+    };
+    const float wm[2] = {
+        dmf.y * (__int_as_float(P104_MMVQ_MAGIC_I | (a1 & 0xff)) - P104_MMVQ_MAGIC_F),
+        dmf.y * (__int_as_float(P104_MMVQ_MAGIC_I | ((a1 >> 8) & 0xff)) - P104_MMVQ_MAGIC_F)
+    };
+
+    float row_sum = 0.0f;
+#pragma unroll
+    for (int i_sub = 0; i_sub < 2; ++i_sub) {
+        int sumi_d = P104_MMVQ_MAGIC_I;
+#pragma unroll
+        for (int l = 0; l < QI8_1; ++l) {
+            int vl = (v[l] >> (4 * i_sub)) & 0x0F0F0F0F;
+            if constexpr (type == GGML_TYPE_Q5_K) {
+                vl |= (vh[l] << (4 - i_sub)) & 0x10101010;
+            }
+            sumi_d = ggml_cuda_dp4a(vl, u[i_sub][l], sumi_d);
+        }
+        const float fd = __int_as_float(sumi_d) - P104_MMVQ_MAGIC_F;
+        row_sum = fmaf(fd, wd[i_sub] * d8[i_sub], row_sum);
+        row_sum = fmaf(-wm[i_sub], fsum_m[i_sub], row_sum);
+    }
+    return row_sum;
+}
+
+// p104 v15/v17: single-column hoisted-y + magic-float k-loop for Q4_K/Q5_K on Pascal (ncols_dst == 1, optional gate fusion).
+// Loads q8_1 u[2][8] once via int4 __ldg, computes exact sumi_m once across rows_per_cuda_block (and gate weights), and uses magic-float.
+template <ggml_type type, int rows_per_cuda_block, bool has_fusion>
 static __device__ __forceinline__ void p104_mmvq_kloop_q45_n1(
-        const void * __restrict__ vx, const block_q8_1 * __restrict__ y,
+        const void * __restrict__ vx, const void * __restrict__ vgate, const bool use_gate,
+        const block_q8_1 * __restrict__ y,
         const int tid, const int blocks_per_row_x, const int blocks_per_iter,
         const int kbx_offset, const int stride_row_x,
-        float (&tmp)[1][rows_per_cuda_block]) {
+        float (&tmp)[1][rows_per_cuda_block], float (&tmp_gate)[1][rows_per_cuda_block]) {
     constexpr int qk = ggml_cuda_type_traits<type>::qk;
     constexpr int qi = ggml_cuda_type_traits<type>::qi;
     constexpr int vdr = 8;
@@ -1166,69 +1243,12 @@ static __device__ __forceinline__ void p104_mmvq_kloop_q45_n1(
 #pragma unroll
         for (int r = 0; r < rows_per_cuda_block; ++r) {
             const int row_kbx = kbx_offset + r * stride_row_x + kbx;
-            int v[8];
-            int vh[8];
-            const uint16_t * scales;
-            float2 dmf;
-            if constexpr (type == GGML_TYPE_Q4_K) {
-                const block_q4_K * bq = (const block_q4_K *) vx + row_kbx;
-                const int4 * q4 = (const int4 *) (bq->qs + 32 * j_sub);
-                const int4 v0 = __ldg(q4 + 0);
-                const int4 v1 = __ldg(q4 + 1);
-                v[0] = v0.x; v[1] = v0.y; v[2] = v0.z; v[3] = v0.w;
-                v[4] = v1.x; v[5] = v1.y; v[6] = v1.z; v[7] = v1.w;
-                scales = (const uint16_t *) bq->scales;
-                dmf = __half22float2(__ldg(&bq->dm));
-            } else {
-                const block_q5_K * bq = (const block_q5_K *) vx + row_kbx;
-                const int4 * q5 = (const int4 *) (bq->qs + 32 * j_sub);
-                const int4 * qh = (const int4 *) bq->qh;
-                const int4 v0 = __ldg(q5 + 0);
-                const int4 v1 = __ldg(q5 + 1);
-                const int4 h0 = __ldg(qh + 0);
-                const int4 h1 = __ldg(qh + 1);
-                v[0] = v0.x; v[1] = v0.y; v[2] = v0.z; v[3] = v0.w;
-                v[4] = v1.x; v[5] = v1.y; v[6] = v1.z; v[7] = v1.w;
-                vh[0] = h0.x >> (2 * j_sub); vh[1] = h0.y >> (2 * j_sub);
-                vh[2] = h0.z >> (2 * j_sub); vh[3] = h0.w >> (2 * j_sub);
-                vh[4] = h1.x >> (2 * j_sub); vh[5] = h1.y >> (2 * j_sub);
-                vh[6] = h1.z >> (2 * j_sub); vh[7] = h1.w >> (2 * j_sub);
-                scales = (const uint16_t *) bq->scales;
-                dmf = __half22float2(__ldg(&bq->dm));
-            }
-            const int jm = j_sub & 1;
-            const uint32_t s0 = __ldg(scales + jm + 0);
-            const uint32_t s2 = __ldg(scales + jm + 2);
-            const uint32_t s4 = __ldg(scales + jm + 4);
-            const uint32_t hi = (uint32_t) -(int32_t) (j_sub >= 2);
-            const uint32_t a0 = ((s0 & 0x3f3f) & ~hi) | ((((s4 >> 0) & 0x0f0f) | ((s0 & 0xc0c0) >> 2)) & hi);
-            const uint32_t a1 = ((s2 & 0x3f3f) & ~hi) | ((((s4 >> 4) & 0x0f0f) | ((s2 & 0xc0c0) >> 2)) & hi);
-            const float wd[2] = {
-                dmf.x * (__int_as_float(P104_MMVQ_MAGIC_I | (a0 & 0xff)) - P104_MMVQ_MAGIC_F),
-                dmf.x * (__int_as_float(P104_MMVQ_MAGIC_I | ((a0 >> 8) & 0xff)) - P104_MMVQ_MAGIC_F)
-            };
-            const float wm[2] = {
-                dmf.y * (__int_as_float(P104_MMVQ_MAGIC_I | (a1 & 0xff)) - P104_MMVQ_MAGIC_F),
-                dmf.y * (__int_as_float(P104_MMVQ_MAGIC_I | ((a1 >> 8) & 0xff)) - P104_MMVQ_MAGIC_F)
-            };
-
-            float row_sum = 0.0f;
-#pragma unroll
-            for (int i_sub = 0; i_sub < 2; ++i_sub) {
-                int sumi_d = P104_MMVQ_MAGIC_I;
-#pragma unroll
-                for (int l = 0; l < QI8_1; ++l) {
-                    int vl = (v[l] >> (4 * i_sub)) & 0x0F0F0F0F;
-                    if constexpr (type == GGML_TYPE_Q5_K) {
-                        vl |= (vh[l] << (4 - i_sub)) & 0x10101010;
-                    }
-                    sumi_d = ggml_cuda_dp4a(vl, u[i_sub][l], sumi_d);
+            tmp[0][r] += p104_mmvq_q45_n1_row<type>(vx, row_kbx, j_sub, u, d8, fsum_m);
+            if constexpr (has_fusion) {
+                if (use_gate) {
+                    tmp_gate[0][r] += p104_mmvq_q45_n1_row<type>(vgate, row_kbx, j_sub, u, d8, fsum_m);
                 }
-                const float fd = __int_as_float(sumi_d) - P104_MMVQ_MAGIC_F;
-                row_sum = fmaf(fd, wd[i_sub] * d8[i_sub], row_sum);
-                row_sum = fmaf(-wm[i_sub], fsum_m[i_sub], row_sum);
             }
-            tmp[0][r] += row_sum;
         }
     }
 }
@@ -1550,17 +1570,17 @@ static __global__ void mul_mat_vec_q(
     const block_q8_1 * y = ((const block_q8_1 *) vy) + sample_y*stride_sample_y + channel_y*stride_channel_y;
     const int kbx_offset = sample_x*stride_sample_x + channel_x*stride_channel_x + row0*stride_row_x;
 
-    if constexpr (table_id == MMVQ_PARAMETERS_PASCAL && !has_fusion && !small_k && ncols_dst == 1 &&
-                  ((type == GGML_TYPE_Q4_K && !has_ids) || type == GGML_TYPE_Q5_K)) {
-        p104_mmvq_kloop_q45_n1<type, rows_per_cuda_block>(
-            vx, y, tid, blocks_per_row_x, blocks_per_iter, kbx_offset, stride_row_x, tmp);
+    if constexpr (table_id == MMVQ_PARAMETERS_PASCAL && ncols_dst == 1 &&
+                  ((type == GGML_TYPE_Q4_K && (!has_ids || has_fusion)) || type == GGML_TYPE_Q5_K)) {
+        p104_mmvq_kloop_q45_n1<type, rows_per_cuda_block, has_fusion>(
+            vx, vgate, use_gate, y, tid, blocks_per_row_x, blocks_per_iter, kbx_offset, stride_row_x, tmp, tmp_gate);
     } else if constexpr (table_id == MMVQ_PARAMETERS_PASCAL && !has_fusion && !small_k && type == GGML_TYPE_Q4_K && ncols_dst == 3) {
         p104_mmvq_kloop_q4_col<ncols_dst, rows_per_cuda_block>(
             vx, y, tid, blocks_per_row_x, blocks_per_iter, kbx_offset, stride_row_x, stride_col_y, tmp);
-    } else if constexpr (table_id == MMVQ_PARAMETERS_PASCAL && !has_fusion && !small_k && (type == GGML_TYPE_Q5_K || (type == GGML_TYPE_Q4_K && has_ids)) && ncols_dst <= P104_WIDE_MAX_NCOLS) {
+    } else if constexpr (table_id == MMVQ_PARAMETERS_PASCAL && !has_fusion && ((!small_k && type == GGML_TYPE_Q5_K) || (type == GGML_TYPE_Q4_K && has_ids && (!small_k || ncols_dst == 1))) && ncols_dst <= P104_WIDE_MAX_NCOLS) {
         p104_mmvq_kloop_q45<type, ncols_dst, rows_per_cuda_block>(
             vx, y, tid, blocks_per_row_x, blocks_per_iter, kbx_offset, stride_row_x, stride_col_y, tmp);
-    } else if constexpr (table_id == MMVQ_PARAMETERS_PASCAL && !has_fusion && !small_k && type == GGML_TYPE_Q6_K && ncols_dst == 1) {
+    } else if constexpr (table_id == MMVQ_PARAMETERS_PASCAL && !has_fusion && type == GGML_TYPE_Q6_K && ncols_dst == 1) {
         p104_mmvq_kloop_q6<ncols_dst, rows_per_cuda_block, vdr>(
             vx, y, tid, blocks_per_row_x, blocks_per_iter, kbx_offset, stride_row_x, stride_col_y, tmp);
     } else {
@@ -1611,23 +1631,25 @@ static __global__ void mul_mat_vec_q(
     __shared__ float tmp_shared[nwarps-1 > 0 ? nwarps-1 : 1][ncols_dst][rows_per_cuda_block][warp_size];
     [[maybe_unused]] __shared__ float tmp_shared_gate[(has_fusion && (nwarps-1 > 0)) ? nwarps-1 : 1][ncols_dst][rows_per_cuda_block][warp_size];
 
-    if (threadIdx.y > 0) {
+    if constexpr (nwarps > 1) {
+        if (threadIdx.y > 0) {
 #pragma unroll
-        for (int j = 0; j < ncols_dst; ++j) {
+            for (int j = 0; j < ncols_dst; ++j) {
 #pragma unroll
-            for (int i = 0; i < rows_per_cuda_block; ++i) {
-                tmp_shared[threadIdx.y-1][j][i][threadIdx.x] = tmp[j][i];
-                if constexpr (has_fusion) {
-                    if (use_gate) {
-                        tmp_shared_gate[threadIdx.y-1][j][i][threadIdx.x] = tmp_gate[j][i];
+                for (int i = 0; i < rows_per_cuda_block; ++i) {
+                    tmp_shared[threadIdx.y-1][j][i][threadIdx.x] = tmp[j][i];
+                    if constexpr (has_fusion) {
+                        if (use_gate) {
+                            tmp_shared_gate[threadIdx.y-1][j][i][threadIdx.x] = tmp_gate[j][i];
+                        }
                     }
                 }
             }
         }
-    }
-    __syncthreads();
-    if (threadIdx.y > 0) {
-        return;
+        __syncthreads();
+        if (threadIdx.y > 0) {
+            return;
+        }
     }
 
     dst += sample_dst*stride_sample_dst + channel_dst*stride_channel_dst + row0;
@@ -1637,12 +1659,14 @@ static __global__ void mul_mat_vec_q(
     for (int j = 0; j < ncols_dst; ++j) {
 #pragma unroll
         for (int i = 0; i < rows_per_cuda_block; ++i) {
+            if constexpr (nwarps > 1) {
 #pragma unroll
-            for (int l = 0; l < nwarps-1; ++l) {
-                tmp[j][i] += tmp_shared[l][j][i][threadIdx.x];
-                if constexpr (has_fusion) {
-                    if (use_gate) {
-                        tmp_gate[j][i] += tmp_shared_gate[l][j][i][threadIdx.x];
+                for (int l = 0; l < nwarps-1; ++l) {
+                    tmp[j][i] += tmp_shared[l][j][i][threadIdx.x];
+                    if constexpr (has_fusion) {
+                        if (use_gate) {
+                            tmp_gate[j][i] += tmp_shared_gate[l][j][i][threadIdx.x];
+                        }
                     }
                 }
             }
@@ -1702,7 +1726,7 @@ static __global__ void mul_mat_vec_q(
 // Grid: (ceil(nrows_x / c_rows_per_block), nchannels_dst)
 // Block: (warp_size, ncols_dst) - each warp handles one token independently.
 // No shared memory reduction needed since each warp works alone.
-template <ggml_type type, int c_rows_per_block, bool has_fusion = false>
+template <ggml_type type, int c_rows_per_block, bool has_fusion = false, bool p104_wide = false>
 __launch_bounds__(get_mmvq_mmid_max_batch_for_device<type>()*ggml_cuda_get_physical_warp_size(), 1)
 static __global__ void mul_mat_vec_q_moe(
         const void * vx_ptr, const void * vy_ptr, const int32_t * ids_ptr, const ggml_cuda_mm_fusion_args_device fusion,
@@ -1718,10 +1742,17 @@ static __global__ void mul_mat_vec_q_moe(
 
     constexpr int qk  = ggml_cuda_type_traits<type>::qk;
     constexpr int qi  = ggml_cuda_type_traits<type>::qi;
-    constexpr int vdr = get_vdr_mmvq(type);
+    constexpr bool use_p104_wide = p104_wide && mmvq_pascal_tuned(type);
+    constexpr int vdr = use_p104_wide
+        ? (type == GGML_TYPE_Q6_K ? P104_Q6_VDR : 8)
+        : get_vdr_mmvq(type);
     constexpr int warp_size = ggml_cuda_get_physical_warp_size();
 
-    constexpr vec_dot_q_cuda_t vec_dot_q_cuda = get_vec_dot_q_cuda(type);
+    constexpr vec_dot_q_cuda_t vec_dot_q_cuda = use_p104_wide
+        ? (type == GGML_TYPE_Q4_K ? vec_dot_q4_K_q8_1_wide<true>
+         : type == GGML_TYPE_Q5_K ? vec_dot_q5_K_q8_1_wide<true>
+         : vec_dot_q6_K_q8_1_v<P104_Q6_VDR, false>)
+        : get_vec_dot_q_cuda(type);
 
     const bool shared_expert = has_fusion && fusion.shared_up && blockIdx.y == gridDim.y - 1;
     if (shared_expert) {
@@ -1894,7 +1925,7 @@ static void mul_mat_vec_q_switch_fusion(
     GGML_ASSERT(!has_fusion && "fusion only supported for ncols_dst=1");
 
     const ggml_cuda_kernel_launch_params launch_params = ggml_cuda_kernel_launch_params(block_nums, block_dims, nbytes_shared, stream);
-    if constexpr (c_ncols_dst == 1 && !small_k && type == GGML_TYPE_Q4_K) {
+    if constexpr (c_ncols_dst == 1 && type == GGML_TYPE_Q4_K) {
         if (ids != nullptr) {
             ggml_cuda_kernel_launch(mul_mat_vec_q<type, c_ncols_dst, false, small_k, halve_iters, true>, launch_params,
                 vx, vy, ids, fusion, dst, ncols_x, nchannels_y, stride_row_x, stride_col_y, stride_col_dst,
@@ -1916,7 +1947,7 @@ static void mul_mat_vec_q_moe_launch(
         const uint32_t stride_row_x, const uint32_t stride_col_y, const uint32_t stride_col_dst,
         const uint32_t stride_channel_x, const uint32_t stride_channel_y, const uint32_t stride_channel_dst,
         const uint32_t ncols_dst, const uint32_t ids_stride,
-        const int warp_size, const int nchannels_dst, cudaStream_t stream) {
+        const int warp_size, const int nchannels_dst, const mmvq_parameter_table_id table_id, cudaStream_t stream) {
 
     constexpr int rows_per_block = 2; // 2 gives best perf based on tuning
     const int64_t nblocks_rows = (nrows_x + rows_per_block - 1) / rows_per_block;
@@ -1926,19 +1957,38 @@ static void mul_mat_vec_q_moe_launch(
 
     const bool has_fusion = fusion.gate != nullptr || fusion.x_bias != nullptr || fusion.gate_bias != nullptr ||
                             fusion.x_scale != nullptr || fusion.gate_scale != nullptr;
+    const bool aligned16 = ((((uintptr_t) vx | (uintptr_t) fusion.gate | (uintptr_t) fusion.shared_up | (uintptr_t) fusion.shared_gate) & 15) == 0);
+    const bool use_p104_wide = (table_id == MMVQ_PARAMETERS_PASCAL) && (
+        (mmvq_pascal_wide(type) && ncols_x >= 2048 && aligned16) ||
+        (type == GGML_TYPE_Q6_K && ncols_x >= 512));
 
-    if (has_fusion) {
-        ggml_cuda_kernel_launch(mul_mat_vec_q_moe<type, rows_per_block, true>, launch_params,
+    auto launch_moe = [&](auto c_fusion, auto c_wide) {
+        ggml_cuda_kernel_launch(mul_mat_vec_q_moe<type, rows_per_block, c_fusion(), c_wide()>, launch_params,
             vx, vy, ids, fusion, dst, ncols_x, nchannels_y, nrows_x,
             stride_row_x, stride_col_y, stride_col_dst,
             stride_channel_x, stride_channel_y, stride_channel_dst,
             ncols_dst, ids_stride);
+    };
+    if constexpr (mmvq_pascal_tuned(type)) {
+        if (has_fusion) {
+            if (use_p104_wide) {
+                launch_moe(std::true_type{}, std::true_type{});
+            } else {
+                launch_moe(std::true_type{}, std::false_type{});
+            }
+        } else {
+            if (use_p104_wide) {
+                launch_moe(std::false_type{}, std::true_type{});
+            } else {
+                launch_moe(std::false_type{}, std::false_type{});
+            }
+        }
     } else {
-        ggml_cuda_kernel_launch(mul_mat_vec_q_moe<type, rows_per_block, false>, launch_params,
-            vx, vy, ids, fusion, dst, ncols_x, nchannels_y, nrows_x,
-            stride_row_x, stride_col_y, stride_col_dst,
-            stride_channel_x, stride_channel_y, stride_channel_dst,
-            ncols_dst, ids_stride);
+        if (has_fusion) {
+            launch_moe(std::true_type{}, std::false_type{});
+        } else {
+            launch_moe(std::false_type{}, std::false_type{});
+        }
     }
 }
 
@@ -2057,7 +2107,7 @@ static void mul_mat_vec_q_switch_ncols_dst(
             vx, vy, ids, fusion, dst, ncols_x, nchannels_y_fd, nrows_x,
             stride_row_x, stride_col_y, stride_col_dst,
             stride_channel_x, stride_channel_y, stride_channel_dst,
-            ncols_dst, ids_stride, warp_size, nchannels_dst, stream);
+            ncols_dst, ids_stride, warp_size, nchannels_dst, table_id, stream);
         return;
     }
 
